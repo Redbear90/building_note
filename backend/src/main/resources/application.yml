@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: building-note
+
+  # 활성 프로파일 (개발 시 local로 변경)
+  profiles:
+    active: ${SPRING_PROFILE:local}
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/building_note}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate        # 운영은 validate, 개발은 update
+    show-sql: false
+    open-in-view: false         # OSIV 비활성화 (성능 이슈 방지)
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_batch_fetch_size: 100
+
+  # 쿠키 기반 리프레시 토큰 설정
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-min-256bit-long-enough-for-hs256-algorithm}
+  access-token-expiration: 3600000      # 1시간 (ms)
+  refresh-token-expiration: 2592000000  # 30일 (ms)
+
+# Swagger / OpenAPI 설정
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+# 로깅
+logging:
+  level:
+    com.buildingnote: INFO
+    org.hibernate.SQL: WARN

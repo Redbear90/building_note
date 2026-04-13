@@ -1,0 +1,12 @@
+# 로컬 개발 환경 전용 설정
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update    # 로컬에서는 스키마 자동 업데이트
+    show-sql: true
+
+logging:
+  level:
+    com.buildingnote: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
