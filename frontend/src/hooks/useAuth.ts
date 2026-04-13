@@ -15,7 +15,10 @@ export const useAuth = () => {
         navigate('/')
       } catch (error) {
         const axiosError = error as AxiosError<{ message: string }>
-        throw new Error(axiosError.response?.data?.message || '로그인에 실패했습니다.')
+        const msg = axiosError.response?.data?.message
+          || axiosError.message
+          || '로그인에 실패했습니다.'
+        throw new Error(msg)
       }
     },
     [login, navigate]

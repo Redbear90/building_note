@@ -12,7 +12,7 @@ export const useUnitRecord = (unitId: string | null) => {
     queryKey: recordKeys.byUnit(unitId!),
     queryFn: () => recordApi.getByUnit(unitId!),
     enabled: !!unitId,
-    staleTime: 1000 * 60 * 2,  // 2분
+    // staleTime 기본값 0 — 저장 후 즉시 재조회
   })
 }
 
@@ -27,8 +27,9 @@ export const useSaveRecord = () => {
       unitId: string
       data: Record<string, string | string[]>
     }) => recordApi.save(unitId, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: recordKeys.byUnit(variables.unitId) })
+    onSuccess: (savedRecord, variables) => {
+      // 즉시 캐시 업데이트 → UnitCard 색상 즉시 반영
+      queryClient.setQueryData(recordKeys.byUnit(variables.unitId), savedRecord)
     },
   })
 }

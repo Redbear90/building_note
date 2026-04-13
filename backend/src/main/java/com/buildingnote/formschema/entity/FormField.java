@@ -35,4 +35,8 @@ public class FormField {
 
     /** 정렬 순서 */
     private int sortOrder;
+
+    /** 카드 색상 표시용 필드 여부 (한 건물에 하나만) */
+    @Builder.Default
+    private boolean isStatusField = false;
 }

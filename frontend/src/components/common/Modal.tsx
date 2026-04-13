@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -32,7 +33,7 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       onClick={onClose}
@@ -69,6 +70,7 @@ export const Modal: React.FC<ModalProps> = ({
         {/* 콘텐츠 */}
         <div className="overflow-y-auto max-h-[calc(90vh-60px)]">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

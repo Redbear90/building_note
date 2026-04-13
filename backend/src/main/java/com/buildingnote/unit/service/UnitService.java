@@ -2,6 +2,7 @@ package com.buildingnote.unit.service;
 
 import com.buildingnote.building.entity.Building;
 import com.buildingnote.building.repository.BuildingRepository;
+import com.buildingnote.comment.repository.UnitCommentRepository;
 import com.buildingnote.common.exception.BusinessException;
 import com.buildingnote.common.exception.ErrorCode;
 import com.buildingnote.unit.dto.UnitReorderRequest;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,17 +30,32 @@ public class UnitService {
 
     private final UnitRepository unitRepository;
     private final BuildingRepository buildingRepository;
+    private final UnitCommentRepository commentRepository;
 
     /**
      * 건물의 호실 목록 조회 (정렬 순서 기준)
+     * 각 호실의 최신 댓글 시각도 함께 반환 (NEW 배지용)
      */
     public List<UnitResponse> getUnits(UUID buildingId) {
-        // 건물 존재 여부 확인
         if (!buildingRepository.existsById(buildingId)) {
             throw new BusinessException(ErrorCode.BUILDING_NOT_FOUND);
         }
-        return unitRepository.findByBuildingIdOrderBySortOrderAsc(buildingId)
-                .stream().map(UnitResponse::from).toList();
+        List<Unit> units = unitRepository.findByBuildingIdOrderBySortOrderAsc(buildingId);
+        if (units.isEmpty()) return List.of();
+
+        // 호실 ID 목록으로 최신 댓글 시각 일괄 조회
+        List<UUID> unitIds = units.stream().map(Unit::getId).toList();
+        Map<UUID, LocalDateTime> lastCommentMap = commentRepository
+                .findLatestCommentTimesByUnitIds(unitIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (LocalDateTime) row[1]
+                ));
+
+        return units.stream()
+                .map(u -> UnitResponse.from(u, lastCommentMap.get(u.getId())))
+                .toList();
     }
 
     /**

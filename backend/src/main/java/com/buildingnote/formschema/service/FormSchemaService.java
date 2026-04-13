@@ -58,6 +58,7 @@ public class FormSchemaService {
                         .options(dto.options())
                         .required(dto.required())
                         .sortOrder(dto.sortOrder())
+                        .isStatusField(dto.isStatusField())
                         .build())
                 .toList();
 

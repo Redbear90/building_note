@@ -1,11 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Building2, ChevronRight, GripVertical, MapPin, X, Search, Loader2 } from 'lucide-react'
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react'
+import { Plus, Pencil, Trash2, Building2, ChevronRight, GripVertical, MapPin, X, Search, Loader2, Import } from 'lucide-react'
 import { useBuildings, useCreateBuilding, useDeleteBuilding } from '@/queries/useBuildingQueries'
 import { useUnits, useCreateUnit, useDeleteUnit } from '@/queries/useUnitQueries'
 import { useZones } from '@/queries/useZoneQueries'
 import { useMapStore } from '@/stores/mapStore'
 import type { Building, KakaoAddressSearchResult } from '@/types'
 import { cn } from '@/lib/utils'
+
+const BuildingImportModal = lazy(() => import('./BuildingImportModal'))
 
 interface BuildingManagerProps {
   onEditFormSchema: (building: Building) => void
@@ -14,6 +16,7 @@ interface BuildingManagerProps {
 const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [showAddBuilding, setShowAddBuilding] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [showAddUnit, setShowAddUnit] = useState(false)
 
   const [buildingForm, setBuildingForm] = useState({
@@ -124,17 +127,31 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
 
   return (
     <div className="space-y-4">
+      {showImportModal && (
+        <Suspense fallback={null}>
+          <BuildingImportModal onClose={() => setShowImportModal(false)} />
+        </Suspense>
+      )}
       {!selectedBuilding ? (
         <>
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-gray-500">건물 ({buildings.length})</p>
-            <button
-              onClick={() => setShowAddBuilding(!showAddBuilding)}
-              className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              건물 추가
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary-600"
+              >
+                <Import className="w-3.5 h-3.5" />
+                지도에서 가져오기
+              </button>
+              <button
+                onClick={() => setShowAddBuilding(!showAddBuilding)}
+                className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                건물 추가
+              </button>
+            </div>
           </div>
 
           {/* 건물 추가 폼 */}

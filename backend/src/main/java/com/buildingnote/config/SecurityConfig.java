@@ -51,19 +51,28 @@ public class SecurityConfig {
 
                 // 요청별 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        // Swagger UI 허용
-                        .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
-                        // 인증 API 허용
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        // GET 요청 공개 (건물, 구역, 호실, 폼 스키마 조회)
-                        .requestMatchers(HttpMethod.GET, "/api/v1/zones/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/buildings/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/units/**").permitAll()
-                        // 기록 조회는 공개, 저장은 인증 필요
-                        .requestMatchers(HttpMethod.GET, "/api/v1/units/*/record").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/units/*/record").authenticated()
-                        // 나머지는 인증 필요
-                        .anyRequest().authenticated()
+                        // =====================================================
+                        // [임시 공개 모드] 모든 요청 허용 — 복구 시 이 줄 제거
+                        .anyRequest().permitAll()
+                        // =====================================================
+                        // [원래 설정 — 복구 시 위 .anyRequest().permitAll() 제거 후 아래 주석 해제]
+//                        // Swagger UI 허용
+//                        .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
+//                        // 인증 API 허용
+//                        .requestMatchers("/api/v1/auth/**").permitAll()
+//                        // GET 요청 공개 (건물, 구역, 호실, 폼 스키마 조회)
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/zones/**").permitAll()
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/buildings/**").permitAll()
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/units/**").permitAll()
+//                        // 기록 조회는 공개, 저장은 인증 필요
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/units/*/record").permitAll()
+//                        .requestMatchers(HttpMethod.PUT, "/api/v1/units/*/record").authenticated()
+//                        // 댓글 조회는 공개, 작성/삭제는 인증 필요
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/units/*/comments").permitAll()
+//                        .requestMatchers(HttpMethod.POST, "/api/v1/units/*/comments").authenticated()
+//                        .requestMatchers(HttpMethod.DELETE, "/api/v1/units/*/comments/*").authenticated()
+//                        // 나머지는 인증 필요
+//                        .anyRequest().authenticated()
                 )
 
                 // 인증/인가 실패 처리 (JSON 형식 반환)

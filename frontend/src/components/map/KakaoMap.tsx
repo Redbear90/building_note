@@ -20,7 +20,7 @@ interface KakaoMapProps {
 const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
   const mapRef = useRef<HTMLDivElement>(null)
   const initialMoveRef = useRef(false)
-  const { selectBuilding, setMapReady, registerDrawingHandlers, registerMoveToCenter, registerShowTempMarker, isPickingLocation, stopPickingLocation } = useMapStore()
+  const { selectBuilding, setMapReady, registerDrawingHandlers, registerMoveToCenter, registerShowTempMarker, registerGetBounds, isPickingLocation, stopPickingLocation } = useMapStore()
 
   const { data: buildings = [] } = useBuildings()
   const { data: zones = [] } = useZones()
@@ -39,6 +39,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
     stopDrawingZone,
     moveToCenter,
     showTempMarker,
+    getBounds,
   } = useKakaoMap(mapRef, { onBuildingClick: handleBuildingClick })
 
   // 지도 준비 완료 알림 + 핸들러 등록
@@ -48,15 +49,16 @@ const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
       registerDrawingHandlers(startDrawingZone, stopDrawingZone)
       registerMoveToCenter(moveToCenter)
       registerShowTempMarker(showTempMarker)
+      registerGetBounds(getBounds as () => { swLat: number; swLng: number; neLat: number; neLng: number })
     }
-  }, [isReady, setMapReady, registerDrawingHandlers, startDrawingZone, stopDrawingZone, registerMoveToCenter, moveToCenter, registerShowTempMarker, showTempMarker])
+  }, [isReady, setMapReady, registerDrawingHandlers, startDrawingZone, stopDrawingZone, registerMoveToCenter, moveToCenter, registerShowTempMarker, showTempMarker, registerGetBounds, getBounds])
 
   // 지도 준비 완료 시 첫 번째 구역 중심으로 1회 이동
   useEffect(() => {
     if (!isReady || !zones.length || initialMoveRef.current) return
     const center = polygonCenter(zones[0].polygon)
     if (center) {
-      moveToCenter(center.lat, center.lng, 5)
+      moveToCenter(center.lat, center.lng, 3)  // 50m 축척
       initialMoveRef.current = true
     }
   }, [isReady, zones, moveToCenter])

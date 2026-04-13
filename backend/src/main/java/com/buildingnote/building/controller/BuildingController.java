@@ -47,7 +47,7 @@ public class BuildingController {
 
     @Operation(summary = "건물 생성 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<BuildingResponse>> createBuilding(
             @Valid @RequestBody BuildingRequest request,
             @AuthenticationPrincipal User currentUser) {
@@ -58,7 +58,7 @@ public class BuildingController {
 
     @Operation(summary = "건물 수정 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PatchMapping("/{buildingId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<BuildingResponse>> updateBuilding(
             @PathVariable UUID buildingId,
             @Valid @RequestBody BuildingRequest request) {
@@ -68,7 +68,7 @@ public class BuildingController {
 
     @Operation(summary = "건물 삭제 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @DeleteMapping("/{buildingId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<Void>> deleteBuilding(@PathVariable UUID buildingId) {
         buildingService.deleteBuilding(buildingId);
         return ResponseEntity.ok(ApiResponse.success(null, "건물이 삭제되었습니다."));

@@ -36,7 +36,7 @@ public class UnitController {
 
     @Operation(summary = "호실 추가 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PostMapping("/api/v1/buildings/{buildingId}/units")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<UnitResponse>> createUnit(
             @PathVariable UUID buildingId,
             @Valid @RequestBody UnitRequest request) {
@@ -47,7 +47,7 @@ public class UnitController {
 
     @Operation(summary = "호실 수정 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PatchMapping("/api/v1/units/{unitId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<UnitResponse>> updateUnit(
             @PathVariable UUID unitId,
             @Valid @RequestBody UnitRequest request) {
@@ -57,7 +57,7 @@ public class UnitController {
 
     @Operation(summary = "호실 삭제 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @DeleteMapping("/api/v1/units/{unitId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<Void>> deleteUnit(@PathVariable UUID unitId) {
         unitService.deleteUnit(unitId);
         return ResponseEntity.ok(ApiResponse.success(null, "호실이 삭제되었습니다."));
@@ -65,7 +65,7 @@ public class UnitController {
 
     @Operation(summary = "호실 순서 변경 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PatchMapping("/api/v1/buildings/{buildingId}/units/reorder")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<List<UnitResponse>>> reorderUnits(
             @PathVariable UUID buildingId,
             @RequestBody UnitReorderRequest request) {

@@ -66,6 +66,7 @@ const SortableFieldItem: React.FC<{
   }
 
   const needsOptions = ['radio', 'checkbox', 'select'].includes(field.type)
+  const canBeStatusField = ['radio', 'checkbox', 'select'].includes(field.type)
 
   return (
     <div
@@ -73,7 +74,8 @@ const SortableFieldItem: React.FC<{
       style={style}
       className={cn(
         'bg-white border rounded-md p-4 space-y-3',
-        isDragging ? 'shadow-xl border-primary-300' : 'border-gray-200'
+        isDragging ? 'shadow-xl border-primary-300' : 'border-gray-200',
+        field.isStatusField ? 'border-primary-400 bg-primary-50/30' : ''
       )}
     >
       <div className="flex items-center gap-2">
@@ -88,6 +90,17 @@ const SortableFieldItem: React.FC<{
           {FIELD_TYPE_LABEL[field.type] ?? field.type}
         </span>
         <div className="flex-1" />
+        {canBeStatusField && (
+          <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer" title="이 필드의 값으로 호실 카드 색상 표시">
+            <input
+              type="checkbox"
+              checked={field.isStatusField ?? false}
+              onChange={(e) => onUpdate(field.id, { isStatusField: e.target.checked })}
+              className="rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+            />
+            카드색상
+          </label>
+        )}
         <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
           <input
             type="checkbox"
@@ -197,10 +210,23 @@ const FormSchemaViewer: React.FC<{
     ) : (
       <div className="flex-1 overflow-y-auto space-y-2">
         {fields.map((field, i) => (
-          <div key={field.id} className="px-3 py-2.5 bg-white border border-gray-200 rounded-md">
+          <div
+            key={field.id}
+            className={cn(
+              'px-3 py-2.5 border rounded-md',
+              field.isStatusField
+                ? 'bg-primary-50 border-primary-300'
+                : 'bg-white border-gray-200'
+            )}
+          >
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 w-5 text-right flex-shrink-0">{i + 1}.</span>
               <span className="text-sm font-medium text-gray-800 flex-1 truncate">{field.label}</span>
+              {field.isStatusField && (
+                <span className="text-[10px] font-semibold text-primary-600 bg-primary-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                  카드색상
+                </span>
+              )}
               <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0">
                 {FIELD_TYPE_LABEL[field.type]}
               </span>
@@ -256,7 +282,12 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ buildingId, buildingName, onC
   }
 
   const updateField = (id: string, updates: Partial<FormField>) => {
-    setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } : f)))
+    setFields((prev) => prev.map((f) => {
+      if (f.id === id) return { ...f, ...updates }
+      // isStatusField를 true로 설정하면 다른 필드는 false로 해제
+      if (updates.isStatusField === true) return { ...f, isStatusField: false }
+      return f
+    }))
   }
 
   const deleteField = (id: string) => {

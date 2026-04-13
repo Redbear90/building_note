@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react'
-import { Map, Building2, Settings } from 'lucide-react'
+import { Map, Building2, Settings, LogOut } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import KakaoMap from '@/components/map/KakaoMap'
 import { BuildingBottomSheet } from '@/components/building/BuildingBottomSheet'
@@ -16,7 +16,7 @@ const AdminPanel = lazy(() => import('@/components/admin/AdminPanel'))
  * 데스크톱: 사이드 패널 + 지도
  */
 const MapPage: React.FC = () => {
-  const { isAdmin } = useAuthStore()
+  const { isAdmin, user, logout } = useAuthStore()
   const { isPanelOpen, togglePanel } = useAdminStore()
   const location = useLocation()
 
@@ -28,18 +28,28 @@ const MapPage: React.FC = () => {
           <Building2 className="w-5 h-5 text-primary-500" />
           <span className="text-base font-bold text-gray-900">BuildingNote</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {isAdmin && (
-            <button
-              onClick={togglePanel}
-              className={cn(
-                'p-2 rounded-full transition-colors',
-                isPanelOpen ? 'bg-primary-100 text-primary-600' : 'hover:bg-gray-100 text-gray-600'
-              )}
-              aria-label="관리자 패널"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+            <>
+              <button
+                onClick={togglePanel}
+                className={cn(
+                  'p-2 rounded-full transition-colors',
+                  isPanelOpen ? 'bg-primary-100 text-primary-600' : 'hover:bg-gray-100 text-gray-600'
+                )}
+                aria-label="관리자 패널"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              <button
+                onClick={logout}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                aria-label="로그아웃"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{user?.name ?? '로그아웃'}</span>
+              </button>
+            </>
           )}
           {!isAdmin && (
             <Link

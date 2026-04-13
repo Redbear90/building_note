@@ -18,6 +18,7 @@ interface UseKakaoMapReturn {
   startDrawingZone: () => void
   stopDrawingZone: () => [number, number][]
   moveToBuilding: (building: Building) => void
+  getBounds: () => { swLat: number; swLng: number; neLat: number; neLng: number } | null
 }
 
 /**
@@ -33,7 +34,7 @@ export const useKakaoMap = (
 ): UseKakaoMapReturn => {
   const [map, setMap] = useState<KakaoMap | null>(null)
   const [isReady, setIsReady] = useState(false)
-  const { isPickingLocation, onLocationPicked, stopPickingLocation, registerShowTempMarker } = useMapStore()
+  const { isPickingLocation, onLocationPicked, stopPickingLocation, registerShowTempMarker, registerGetBounds } = useMapStore()
 
   // 마커/폴리곤 레퍼런스 (리렌더링 없이 관리)
   const markersRef = useRef<{ overlay: unknown; building: Building }[]>([])
@@ -56,7 +57,7 @@ export const useKakaoMap = (
       const center = new kakao.LatLng(37.5665, 126.9780)
       const kakaoMap = new kakao.Map(mapRef.current, {
         center,
-        level: 4,
+        level: 3,  // 50m 축척
       })
       setMap(kakaoMap)
       setIsReady(true)
@@ -83,11 +84,12 @@ export const useKakaoMap = (
       const kakao = window.kakao.maps
       const position = new kakao.LatLng(building.lat, building.lng)
 
-      // 커스텀 오버레이 HTML
+      // 커스텀 오버레이 HTML — 아이콘 + 핀 꼬리
+      // yAnchor:1 = 콘텐츠 하단(핀 꼬리 끝)이 좌표에 정렬
       const content = `
         <div class="building-marker" data-id="${building.id}">
           <div class="building-marker-icon">🏢</div>
-          <div class="building-marker-label">${building.name}</div>
+          <div class="building-marker-tail"></div>
         </div>
       `
 
@@ -95,7 +97,7 @@ export const useKakaoMap = (
         position,
         content,
         map,
-        yAnchor: 1,  // 콘텐츠 하단이 좌표에 정렬 (아이콘+라벨 전체가 좌표 위에 위치)
+        yAnchor: 1,  // 콘텐츠(아이콘+꼬리) 최하단이 정확히 좌표에 일치
       })
 
       // 마커 클릭 이벤트는 오버레이 HTML의 click 이벤트로 처리
@@ -144,12 +146,11 @@ export const useKakaoMap = (
         map,
       })
 
-      // 폴리곤 클릭 시 해당 구역 중심으로 이동
+      // 폴리곤 클릭 시 해당 구역 중심으로 이동 (현재 레벨 유지)
       kakao.event.addListener(polygon, 'click', () => {
         const center = polygonCenter(zone.polygon)
         if (center) {
           map.setCenter(new kakao.LatLng(center.lat, center.lng))
-          map.setLevel(5)
         }
       })
 
@@ -243,7 +244,7 @@ export const useKakaoMap = (
 
   /** 지도 중심을 좌표로 이동 (level 선택) */
   const moveToCenter = useCallback(
-    (lat: number, lng: number, level = 5) => {
+    (lat: number, lng: number, level = 3) => {
       if (!map || !window.kakao) return
       const kakao = window.kakao.maps
       map.setCenter(new kakao.LatLng(lat, lng))
@@ -251,6 +252,15 @@ export const useKakaoMap = (
     },
     [map]
   )
+
+  /** 현재 지도 화면 bounds 반환 */
+  const getBounds = useCallback(() => {
+    if (!map) return null
+    const bounds = map.getBounds()
+    const sw = bounds.getSouthWest()
+    const ne = bounds.getNorthEast()
+    return { swLat: sw.getLat(), swLng: sw.getLng(), neLat: ne.getLat(), neLng: ne.getLng() }
+  }, [map])
 
   /** 외부에서 임시 마커를 직접 표시 (주소 검색 결과 선택 시) */
   const showTempMarker = useCallback(
@@ -346,5 +356,6 @@ export const useKakaoMap = (
     moveToBuilding,
     moveToCenter,
     showTempMarker,
+    getBounds,
   }
 }

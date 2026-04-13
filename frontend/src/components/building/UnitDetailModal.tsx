@@ -2,9 +2,10 @@ import React from 'react'
 import { Modal } from '@/components/common/Modal'
 import { DynamicForm } from '@/components/form/DynamicForm'
 import { Skeleton } from '@/components/common/Skeleton'
+import { UnitCommentSection } from './UnitCommentSection'
 import { useDynamicForm } from '@/hooks/useDynamicForm'
 import { useFormSchema } from '@/queries/useFormSchemaQueries'
-import { useUnitRecord } from '@/queries/useRecordQueries'
+import { useUnitRecord, useSaveRecord } from '@/queries/useRecordQueries'
 import { useAuthStore } from '@/stores/authStore'
 import { Lock } from 'lucide-react'
 import type { Building, Unit } from '@/types'
@@ -30,6 +31,7 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
   const isAuthenticated = !!accessToken
   const { data: schema, isLoading: schemaLoading } = useFormSchema(building.id)
   const { data: record, isLoading: recordLoading } = useUnitRecord(unit.id)
+  const saveRecord = useSaveRecord()
 
   const fields = schema?.fields ?? []
 
@@ -42,6 +44,18 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
 
   const isLoading = schemaLoading || recordLoading
 
+  // 활성 토글 상태
+  const isActive = record?.data?.['__active'] === 'true'
+
+  const handleToggleActive = async () => {
+    // if (!isAuthenticated) return // [임시 공개] 복구 시 주석 해제
+    const currentData = (record?.data ?? {}) as Record<string, string | string[]>
+    await saveRecord.mutateAsync({
+      unitId: unit.id,
+      data: { ...currentData, __active: isActive ? 'false' : 'true' },
+    })
+  }
+
   return (
     <Modal
       isOpen
@@ -49,6 +63,28 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
       title={`${building.name} - ${unit.name}`}
       size="lg"
     >
+      {/* 활성 토글 바 */}
+      <div className={`flex items-center justify-between px-5 py-3 border-b transition-colors ${isActive ? 'bg-primary-50' : 'bg-gray-50'}`}>
+        <div>
+          <p className="text-sm font-semibold text-gray-800">호실 표시</p>
+          <p className="text-xs text-gray-400">켜면 목록에서 강조 표시됩니다</p>
+        </div>
+        <button
+          onClick={handleToggleActive}
+          disabled={/* !isAuthenticated || */ saveRecord.isPending} /* [임시 공개] 복구 시 !isAuthenticated || 주석 해제 */
+          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-40 ${
+            isActive ? 'bg-primary-500' : 'bg-gray-300'
+          }`}
+          aria-label="호실 활성 토글"
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
+              isActive ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+
       <div className="px-5 py-4 space-y-4">
         {/* 층 정보 */}
         {unit.floor != null && (
@@ -56,6 +92,7 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
         )}
 
         {/* 비인증 안내 */}
+        {/* [임시 공개] 복구 시 주석 해제
         {!isAuthenticated && (
           <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <Lock className="w-4 h-4 text-amber-600 flex-shrink-0" />
@@ -64,6 +101,7 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
             </p>
           </div>
         )}
+        */}
 
         {/* 로딩 중 */}
         {isLoading ? (
@@ -73,17 +111,20 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
             ))}
           </div>
         ) : (
-          <fieldset disabled={!isAuthenticated}>
+          <fieldset disabled={false}> {/* [임시 공개] 복구 시 disabled={!isAuthenticated} */}
             <DynamicForm
               fields={fields}
               form={form}
               onSave={handleSave}
               isSaving={isSaving}
-              autoSave={isAuthenticated}
+              autoSave={true} /* [임시 공개] 복구 시 autoSave={isAuthenticated} */
             />
           </fieldset>
         )}
       </div>
+
+      {/* 메모/댓글 섹션 */}
+      <UnitCommentSection unitId={unit.id} />
     </Modal>
   )
 }

@@ -1,57 +1,105 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import type { Unit, UnitRecord } from '@/types'
+import { useUnitRecord } from '@/queries/useRecordQueries'
+import type { Unit } from '@/types'
 
 interface UnitCardProps {
   unit: Unit
-  record?: UnitRecord
+  /** 상태 표시용 필드 ID (FormSchema에서 isStatusField=true인 필드) */
+  statusFieldId?: string
   onClick: (unit: Unit) => void
 }
 
-/** 입주 상태별 색상 */
-const STATUS_COLOR: Record<string, string> = {
+/** 값 → 카드 색상 클래스 매핑 */
+const VALUE_COLOR: Record<string, string> = {
   입주: 'bg-green-100 text-green-700 border-green-200',
-  공실: 'bg-gray-100 text-gray-600 border-gray-200',
+  입주중: 'bg-green-100 text-green-700 border-green-200',
+  공실: 'bg-gray-100 text-gray-500 border-gray-200',
   공사중: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  수리중: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  계약완료: 'bg-blue-100 text-blue-700 border-blue-200',
+  계약: 'bg-blue-100 text-blue-700 border-blue-200',
+  퇴실: 'bg-red-100 text-red-600 border-red-200',
+  퇴실예정: 'bg-red-100 text-red-600 border-red-200',
+}
+
+/** 24시간 이내 댓글 여부 */
+function hasNewComment(lastCommentAt?: string): boolean {
+  if (!lastCommentAt) return false
+  return Date.now() - new Date(lastCommentAt).getTime() < 24 * 60 * 60 * 1000
+}
+
+/** record 데이터에서 상태 값 추출 (string 또는 string[] 첫 번째 값) */
+function extractStatusValue(data: Record<string, unknown>, fieldId: string): string | undefined {
+  const val = data[fieldId]
+  if (!val) return undefined
+  if (Array.isArray(val)) return val[0] as string
+  return val as string
 }
 
 /**
  * 호실 카드 컴포넌트
- * 그리드에서 개별 호실을 표시
  */
-export const UnitCard: React.FC<UnitCardProps> = ({ unit, record, onClick }) => {
-  // record.data에서 입주 상태 추출 (f2: 입주상태 필드)
-  const status = record?.data?.['f2'] as string | undefined
+export const UnitCard: React.FC<UnitCardProps> = ({ unit, statusFieldId, onClick }) => {
+  const { data: record } = useUnitRecord(unit.id)
+  const isNew = hasNewComment(unit.lastCommentAt)
+
+  // __active 토글 상태
+  const isActive = record?.data?.['__active'] === 'true'
+
+  // 상태 필드 값 추출
+  const statusValue = statusFieldId && record?.data
+    ? extractStatusValue(record.data as Record<string, unknown>, statusFieldId)
+    : undefined
+
+  // 색상 우선순위: __active > statusField > 기본
+  const colorClass = isActive
+    ? 'bg-primary-500 text-white border-primary-500'
+    : statusValue
+      ? VALUE_COLOR[statusValue]
+      : undefined
 
   return (
     <button
       onClick={() => onClick(unit)}
       className={cn(
-        'w-full p-3 rounded-md border-2 text-left',
+        'relative w-full p-3 rounded-md border-2 text-left',
         'transition-all active:scale-95',
-        'hover:shadow-md hover:border-primary-300',
-        status && STATUS_COLOR[status]
-          ? `border-transparent ${STATUS_COLOR[status]}`
-          : 'border-gray-200 bg-white'
+        'hover:shadow-md',
+        colorClass ?? 'border-gray-200 bg-white hover:border-primary-300'
       )}
     >
+      {/* NEW 배지 (24시간 내 메모 작성) */}
+      {isNew && (
+        <span className="absolute -top-1.5 -right-1.5 px-1 py-0 text-[9px] font-bold bg-red-500 text-white rounded shadow-sm leading-4">
+          NEW
+        </span>
+      )}
+
       {/* 호실 번호 */}
-      <p className="text-sm font-bold leading-tight">{unit.name}</p>
+      <p className={cn('text-sm font-bold leading-tight', isActive ? 'text-white' : 'text-gray-900')}>
+        {unit.name}
+      </p>
 
       {/* 층 정보 */}
       {unit.floor != null && (
-        <p className="text-xs opacity-70 mt-0.5">{unit.floor}층</p>
+        <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-100' : 'opacity-70')}>
+          {unit.floor}층
+        </p>
       )}
 
-      {/* 입주 상태 배지 */}
-      {status && (
-        <div className="mt-1.5">
-          <span className="text-xs font-medium">{status}</span>
-        </div>
+      {/* 상태 값 표시 */}
+      {statusValue && !isActive && (
+        <p className="text-xs font-medium mt-1">{statusValue}</p>
       )}
 
-      {/* 데이터 입력 여부 표시 */}
-      {record && !status && (
+      {/* 활성 표시 */}
+      {isActive && (
+        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-white opacity-80" />
+      )}
+
+      {/* 데이터 입력됨 (상태도 없고 비활성일 때 점으로 표시) */}
+      {record && !statusValue && !isActive && (
         <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary-400" />
       )}
     </button>

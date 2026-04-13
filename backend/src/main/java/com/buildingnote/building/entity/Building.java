@@ -45,7 +45,7 @@ public class Building extends BaseEntity {
     private Zone zone;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "created_by", nullable = true) // [임시 공개] 복구 시 nullable = false
     private User createdBy;
 
     /**

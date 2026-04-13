@@ -35,7 +35,7 @@ public class FormSchemaController {
 
     @Operation(summary = "폼 스키마 저장/전체교체 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<FormSchemaResponse>> saveFormSchema(
             @PathVariable UUID buildingId,
             @Valid @RequestBody FormSchemaRequest request) {

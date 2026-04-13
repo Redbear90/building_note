@@ -24,10 +24,12 @@ public class CorsConfig {
 
         // 허용 오리진 (개발 + 배포 도메인)
         config.setAllowedOriginPatterns(List.of(
-                "http://localhost:3000",   // Vite 개발 서버
-                "http://localhost:5173",   // Vite 기본 포트
-                "http://localhost:4173",   // Vite preview 포트
-                "https://*.buildingnote.com" // 배포 도메인
+                "http://localhost:3000",      // Vite 개발 서버
+                "http://localhost:5173",      // Vite 기본 포트
+                "http://localhost:4173",      // Vite preview 포트
+                "http://192.168.*.*:5173",    // 로컬 네트워크 (모바일 테스트)
+                "http://10.*.*.*:5173",       // 로컬 네트워크 (모바일 테스트)
+                "https://*.buildingnote.com"  // 배포 도메인
         ));
 
         // 허용 HTTP 메서드

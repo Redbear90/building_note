@@ -32,6 +32,7 @@ export interface Unit {
   floor?: number
   sortOrder: number
   buildingId: string
+  lastCommentAt?: string  // 최신 댓글 시각 (24시간 내면 NEW 배지)
   createdAt?: string
   updatedAt?: string
 }
@@ -47,6 +48,7 @@ export interface FormField {
   options?: string[]     // checkbox, radio, select 용
   required?: boolean
   sortOrder: number
+  isStatusField?: boolean  // true이면 이 필드의 값이 카드 색상 표시에 사용됨
 }
 
 /** 건물별 폼 스키마 */
@@ -55,6 +57,15 @@ export interface FormSchema {
   buildingId: string
   fields: FormField[]
   updatedAt?: string
+}
+
+/** 호실 댓글 */
+export interface UnitComment {
+  id: string
+  unitId: string
+  author: string
+  content: string
+  createdAt: string
 }
 
 /** 호실 기록 데이터 */
@@ -124,6 +135,7 @@ export interface KakaoMaps {
     MapTypeId: { ROADMAP: string }
     services: {
       Geocoder: new () => KakaoGeocoder
+      Places: new () => KakaoPlaces
       Status: { OK: string }
     }
   }
@@ -138,6 +150,19 @@ export interface KakaoGeocoder {
   addressSearch: (
     address: string,
     callback: (result: KakaoAddressSearchResult[], status: string) => void
+  ) => void
+}
+
+export interface KakaoPlaces {
+  categorySearch: (
+    code: string,
+    callback: (result: KakaoPlaceResult[], status: string, pagination: { hasNextPage: boolean; nextPage: () => void }) => void,
+    options?: { rect?: string; useMapBounds?: boolean }
+  ) => void
+  keywordSearch: (
+    keyword: string,
+    callback: (result: KakaoPlaceResult[], status: string, pagination: { hasNextPage: boolean; nextPage: () => void }) => void,
+    options?: { rect?: string; size?: number }
   ) => void
 }
 
@@ -192,7 +217,24 @@ export interface KakaoMap {
   getCenter: () => KakaoLatLng
   setLevel: (level: number) => void
   getLevel: () => number
+  getBounds: () => KakaoBounds
   relayout: () => void
+}
+
+export interface KakaoBounds {
+  getSouthWest: () => KakaoLatLng
+  getNorthEast: () => KakaoLatLng
+}
+
+/** 카카오 로컬 API 장소 검색 결과 */
+export interface KakaoPlaceResult {
+  id: string
+  place_name: string
+  address_name: string
+  road_address_name: string
+  x: string  // 경도(lng)
+  y: string  // 위도(lat)
+  category_name: string
 }
 
 export interface KakaoMarker {

@@ -35,7 +35,7 @@ public class RecordController {
 
     @Operation(summary = "호실 기록 저장 (upsert)", security = @SecurityRequirement(name = "BearerAuth"))
     @PutMapping
-    @PreAuthorize("isAuthenticated()")
+    // @PreAuthorize("isAuthenticated()") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<UnitRecordResponse>> saveRecord(
             @PathVariable UUID unitId,
             @Valid @RequestBody UnitRecordRequest request) {

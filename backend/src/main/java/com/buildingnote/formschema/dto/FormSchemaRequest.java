@@ -20,6 +20,7 @@ public record FormSchemaRequest(
             String label,
             List<String> options,
             boolean required,
-            int sortOrder
+            int sortOrder,
+            boolean isStatusField
     ) {}
 }

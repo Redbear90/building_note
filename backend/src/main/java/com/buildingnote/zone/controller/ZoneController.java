@@ -39,7 +39,7 @@ public class ZoneController {
 
     @Operation(summary = "구역 생성 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<ZoneResponse>> createZone(
             @Valid @RequestBody ZoneRequest request,
             @AuthenticationPrincipal User currentUser) {
@@ -50,7 +50,7 @@ public class ZoneController {
 
     @Operation(summary = "구역 수정 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @PatchMapping("/{zoneId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<ZoneResponse>> updateZone(
             @PathVariable UUID zoneId,
             @Valid @RequestBody ZoneRequest request) {
@@ -60,7 +60,7 @@ public class ZoneController {
 
     @Operation(summary = "구역 삭제 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
     @DeleteMapping("/{zoneId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
     public ResponseEntity<ApiResponse<Void>> deleteZone(@PathVariable UUID zoneId) {
         zoneService.deleteZone(zoneId);
         return ResponseEntity.ok(ApiResponse.success(null, "구역이 삭제되었습니다."));

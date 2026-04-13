@@ -22,7 +22,8 @@ public record FormSchemaResponse(
             String label,
             List<String> options,
             boolean required,
-            int sortOrder
+            int sortOrder,
+            boolean isStatusField
     ) {
         public static FormFieldDto from(FormField field) {
             return new FormFieldDto(
@@ -31,7 +32,8 @@ public record FormSchemaResponse(
                     field.getLabel(),
                     field.getOptions(),
                     field.isRequired(),
-                    field.getSortOrder()
+                    field.getSortOrder(),
+                    field.isStatusField()
             );
         }
     }

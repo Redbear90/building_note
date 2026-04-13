@@ -41,6 +41,10 @@ interface MapState {
   registerShowTempMarker: (fn: (lat: number, lng: number) => void) => void
   /** 지도 중심 이동 함수 (KakaoMap이 등록) */
   moveToCenter: ((lat: number, lng: number, level?: number) => void) | null
+  /** 지도 현재 bounds 반환 함수 (KakaoMap이 등록) */
+  getBounds: (() => { swLat: number; swLng: number; neLat: number; neLng: number }) | null
+  /** getBounds 등록 */
+  registerGetBounds: (fn: () => { swLat: number; swLng: number; neLat: number; neLng: number }) => void
   /** 건물 위치 선택 모드 (지도 클릭으로 좌표 선택) */
   isPickingLocation: boolean
   /** 위치 선택 완료 콜백 */
@@ -60,6 +64,7 @@ export const useMapStore = create<MapState>((set) => ({
   startDrawingZone: null,
   stopDrawingZone: null,
   moveToCenter: null,
+  getBounds: null,
   isPickingLocation: false,
   onLocationPicked: null,
 
@@ -82,6 +87,8 @@ export const useMapStore = create<MapState>((set) => ({
     set({ startDrawingZone: start, stopDrawingZone: stop }),
 
   registerMoveToCenter: (fn) => set({ moveToCenter: fn }),
+
+  registerGetBounds: (fn) => set({ getBounds: fn }),
 
   showTempMarker: null,
   registerShowTempMarker: (fn) => set({ showTempMarker: fn }),
