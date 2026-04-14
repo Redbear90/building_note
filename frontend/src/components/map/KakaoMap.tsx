@@ -4,6 +4,7 @@ import { useKakaoMap } from '@/hooks/useKakaoMap'
 import { useMapStore } from '@/stores/mapStore'
 import { useBuildings } from '@/queries/useBuildingQueries'
 import { useZones } from '@/queries/useZoneQueries'
+import { useBuildingColors } from '@/hooks/useBuildingColors'
 import { polygonCenter } from '@/lib/utils'
 import type { Building } from '@/types'
 
@@ -24,6 +25,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
 
   const { data: buildings = [] } = useBuildings()
   const { data: zones = [] } = useZones()
+  const buildingColors = useBuildingColors(buildings)
 
   const handleBuildingClick = (building: Building) => {
     selectBuilding(building)
@@ -70,12 +72,12 @@ const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
     zones.forEach(addZonePolygon)
   }, [isReady, zones, addZonePolygon, clearZonePolygons])
 
-  // 건물 마커 렌더링
+  // 건물 마커 렌더링 (색상 포함)
   useEffect(() => {
     if (!isReady) return
     clearBuildingMarkers()
-    buildings.forEach(addBuildingMarker)
-  }, [isReady, buildings, addBuildingMarker, clearBuildingMarkers])
+    buildings.forEach((b) => addBuildingMarker(b, buildingColors[b.id]))
+  }, [isReady, buildings, buildingColors, addBuildingMarker, clearBuildingMarkers])
 
   return (
     <div className={className}>

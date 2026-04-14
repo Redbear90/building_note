@@ -2,6 +2,7 @@ import { RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import type { Building, KakaoLatLng, KakaoMap, KakaoPolyline, Zone } from '@/types'
 import { useMapStore } from '@/stores/mapStore'
 import { polygonCenter } from '@/lib/utils'
+import type { BuildingColor } from '@/hooks/useBuildingColors'
 
 interface UseKakaoMapOptions {
   onBuildingClick?: (building: Building) => void
@@ -11,7 +12,7 @@ interface UseKakaoMapOptions {
 interface UseKakaoMapReturn {
   map: KakaoMap | null
   isReady: boolean
-  addBuildingMarker: (building: Building) => void
+  addBuildingMarker: (building: Building, color?: BuildingColor) => void
   clearBuildingMarkers: () => void
   addZonePolygon: (zone: Zone) => void
   clearZonePolygons: () => void
@@ -78,18 +79,27 @@ export const useKakaoMap = (
 
   /** 건물 커스텀 오버레이 마커 추가 */
   const addBuildingMarker = useCallback(
-    (building: Building) => {
+    (building: Building, color?: BuildingColor) => {
       if (!map || !window.kakao) return
 
       const kakao = window.kakao.maps
       const position = new kakao.LatLng(building.lat, building.lng)
 
+      // 색상별 스타일 매핑
+      const colorStyles: Record<NonNullable<BuildingColor>, { border: string; bg: string; tail: string }> = {
+        gray:   { border: '#9ca3af', bg: '#f3f4f6', tail: '#9ca3af' },
+        red:    { border: '#ef4444', bg: '#fef2f2', tail: '#ef4444' },
+        yellow: { border: '#eab308', bg: '#fefce8', tail: '#eab308' },
+        blue:   { border: '#3b82f6', bg: '#eff6ff', tail: '#3b82f6' },
+      }
+      const style = colorStyles[color ?? 'gray']
+
       // 커스텀 오버레이 HTML — 아이콘 + 핀 꼬리
       // yAnchor:1 = 콘텐츠 하단(핀 꼬리 끝)이 좌표에 정렬
       const content = `
-        <div class="building-marker" data-id="${building.id}">
-          <div class="building-marker-icon">🏢</div>
-          <div class="building-marker-tail"></div>
+        <div class="building-marker" data-id="${building.id}" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+          <div class="building-marker-icon" style="width:36px;height:36px;border-radius:50%;border:2.5px solid ${style.border};background:${style.bg};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.18);">🏢</div>
+          <div class="building-marker-tail" style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${style.tail};margin-top:-1px;"></div>
         </div>
       `
 
