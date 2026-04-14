@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { unitKeys } from '@/queries/useUnitQueries'
 import { recordKeys } from '@/queries/useRecordQueries'
@@ -15,7 +15,8 @@ export const useBuildingColors = (buildings: Building[]): Record<string, Buildin
   const queryClient = useQueryClient()
   const [colorMap, setColorMap] = useState<Record<string, BuildingColor>>({})
 
-  const computeColors = () => {
+  // useCallback으로 감싸 buildings가 바뀔 때마다 최신 참조를 유지
+  const computeColors = useCallback(() => {
     const next: Record<string, BuildingColor> = {}
 
     for (const building of buildings) {
@@ -52,7 +53,7 @@ export const useBuildingColors = (buildings: Building[]): Record<string, Buildin
     }
 
     return next
-  }
+  }, [buildings, queryClient])
 
   useEffect(() => {
     // 초기 계산
@@ -73,8 +74,7 @@ export const useBuildingColors = (buildings: Building[]): Record<string, Buildin
     })
 
     return unsubscribe
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildings, queryClient])
+  }, [computeColors, queryClient])
 
   return colorMap
 }

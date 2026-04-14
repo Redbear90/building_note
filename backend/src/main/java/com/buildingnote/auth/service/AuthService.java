@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final JwtConfig jwtConfig;
+    private final Environment environment;
 
     /**
      * 로그인
@@ -107,11 +109,13 @@ public class AuthService {
 
     /**
      * httpOnly 쿠키에 리프레시 토큰 설정
+     * local 프로파일에서는 Secure=false (HTTP 허용), 그 외 운영 환경에서는 Secure=true (HTTPS 필수)
      */
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        boolean isLocal = Arrays.asList(environment.getActiveProfiles()).contains("local");
         Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken);
-        cookie.setHttpOnly(true);      // JavaScript 접근 차단
-        cookie.setSecure(false);       // HTTPS에서만 전송 (운영에서는 true로 변경)
+        cookie.setHttpOnly(true);
+        cookie.setSecure(!isLocal);
         cookie.setPath("/");
         cookie.setMaxAge((int) (jwtConfig.getRefreshTokenExpiration() / 1000));
         response.addCookie(cookie);

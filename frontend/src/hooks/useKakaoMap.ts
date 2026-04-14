@@ -64,17 +64,26 @@ export const useKakaoMap = (
       setIsReady(true)
     }
 
-    // Kakao SDK 스크립트가 아직 로드 중이면 폴링으로 대기
+    // Kakao SDK 스크립트가 아직 로드 중이면 폴링으로 대기 (최대 10초)
+    const MAX_WAIT_MS = 10000
+    const POLL_INTERVAL_MS = 100
+    let elapsed = 0
+    let timerId: ReturnType<typeof setTimeout>
+
     const waitForKakao = () => {
       if (window.kakao && window.kakao.maps) {
         // autoload=false 이므로 load() 콜백으로 초기화
         window.kakao.maps.load(initMap)
+      } else if (elapsed < MAX_WAIT_MS) {
+        elapsed += POLL_INTERVAL_MS
+        timerId = setTimeout(waitForKakao, POLL_INTERVAL_MS)
       } else {
-        setTimeout(waitForKakao, 100)
+        console.error('[KakaoMap] SDK 로드 실패: 10초 초과')
       }
     }
 
     waitForKakao()
+    return () => clearTimeout(timerId)
   }, [mapRef])
 
   /** 건물 커스텀 오버레이 마커 추가 */
@@ -95,14 +104,24 @@ export const useKakaoMap = (
       }
       const style = colorStyles[color ?? 'gray']
 
-      // 커스텀 오버레이 HTML — 아이콘 + 핀 꼬리
-      // yAnchor:1 = 콘텐츠 하단(핀 꼬리 끝)이 좌표에 정렬
-      const content = `
-        <div class="building-marker" data-id="${building.id}" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-          <div class="building-marker-icon" style="width:36px;height:36px;border-radius:50%;border:2.5px solid ${style.border};background:${style.bg};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.18);">🏢</div>
-          <div class="building-marker-tail" style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${style.tail};margin-top:-1px;"></div>
-        </div>
-      `
+      // 커스텀 오버레이 — DOM 요소로 직접 생성 후 클릭 리스너 등록
+      // content에 DOM 요소를 넘기면 Kakao SDK가 그대로 삽입하므로
+      // getContent() 타이밍 이슈 없이 안전하게 이벤트 등록 가능
+      const content = document.createElement('div')
+      content.style.cssText = 'display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+
+      const icon = document.createElement('div')
+      icon.style.cssText = `width:36px;height:36px;border-radius:50%;border:2.5px solid ${style.border};background:${style.bg};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.18);`
+      icon.textContent = '🏢'
+
+      const tail = document.createElement('div')
+      tail.style.cssText = `width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${style.tail};margin-top:-1px;`
+
+      content.appendChild(icon)
+      content.appendChild(tail)
+      content.addEventListener('click', () => {
+        options.onBuildingClick?.(building)
+      })
 
       const overlay = new kakao.CustomOverlay({
         position,
@@ -110,14 +129,6 @@ export const useKakaoMap = (
         map,
         yAnchor: 1,  // 콘텐츠(아이콘+꼬리) 최하단이 정확히 좌표에 일치
       })
-
-      // 마커 클릭 이벤트는 오버레이 HTML의 click 이벤트로 처리
-      const element = document.querySelector(`[data-id="${building.id}"]`)
-      if (element) {
-        element.addEventListener('click', () => {
-          options.onBuildingClick?.(building)
-        })
-      }
 
       markersRef.current.push({ overlay, building })
     },

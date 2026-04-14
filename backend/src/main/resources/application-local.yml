@@ -1,9 +1,17 @@
 # 로컬 개발 환경 전용 설정
 spring:
+  datasource:
+    url: jdbc:postgresql://ep-ancient-unit-a1ih87kh-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_d6rfESicHp5C
+
   jpa:
     hibernate:
       ddl-auto: update    # 로컬에서는 스키마 자동 업데이트
     show-sql: true
+
+jwt:
+  secret: local-dev-secret-key-min-256bit-long-enough-for-hs256-algorithm
 
 logging:
   level:

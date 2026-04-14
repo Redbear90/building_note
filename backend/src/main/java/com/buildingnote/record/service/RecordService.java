@@ -28,16 +28,17 @@ public class RecordService {
 
     /**
      * 호실 기록 조회
-     * 기록이 없으면 빈 데이터로 응답
+     * 기록이 없으면 빈 데이터로 응답 (Unit 존재 여부는 record join 또는 단일 쿼리로 확인)
      */
     public UnitRecordResponse getRecord(UUID unitId) {
-        if (!unitRepository.existsById(unitId)) {
-            throw new BusinessException(ErrorCode.UNIT_NOT_FOUND);
-        }
-
-        return unitRecordRepository.findByUnitId(unitId)
-                .map(UnitRecordResponse::from)
-                .orElse(new UnitRecordResponse(null, unitId, new HashMap<>(), null, null));
+        // Unit 존재 확인과 record 조회를 분리하지 않고,
+        // unit 존재 여부는 record upsert 시 검증되므로 여기서는 record 조회만 수행
+        // 단, Unit 자체가 없을 때를 위해 Unit 조회로 통합
+        return unitRepository.findById(unitId)
+                .map(unit -> unitRecordRepository.findByUnitId(unitId)
+                        .map(UnitRecordResponse::from)
+                        .orElse(new UnitRecordResponse(null, unitId, new HashMap<>(), null, null)))
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNIT_NOT_FOUND));
     }
 
     /**

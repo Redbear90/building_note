@@ -9,11 +9,15 @@ interface BottomSheetProps {
   className?: string
 }
 
-/** 스냅 포인트별 translateY 값 */
+/** 스냅 포인트별 translateY 값
+ *  full: 탭바(56px) + safe-area 바로 위까지 올라옴
+ *  half: 화면 절반
+ *  hidden: 핸들만 살짝 노출
+ */
 const SNAP_TRANSLATE: Record<SnapPoint, string> = {
-  hidden: 'translateY(calc(100% - 44px))',  // 핸들+검색창 살짝 노출
-  half: 'translateY(55%)',
-  full: 'translateY(10%)',
+  hidden: 'translateY(calc(100% - 44px))',
+  half:   'translateY(50%)',
+  full:   'translateY(0%)',
 }
 
 /**
@@ -74,7 +78,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       style={{
         transform: SNAP_TRANSLATE[snapPoint],
         transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
-        height: '90vh',   // 최대 높이 (full 스냅 기준)
+        // 탭바(56px) + safe-area 높이를 뺀 만큼이 실제 사용 가능 높이
+        height: 'calc(100% - 56px - env(safe-area-inset-bottom, 0px))',
       }}
     >
       {/* 드래그 핸들 */}
@@ -88,7 +93,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       </div>
 
       {/* 콘텐츠 영역 */}
-      <div className="overflow-y-auto h-[calc(100%-40px)] pb-safe">
+      <div className="overflow-y-auto h-[calc(100%-40px)]">
         {children}
       </div>
     </div>

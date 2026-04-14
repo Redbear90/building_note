@@ -13,7 +13,6 @@ import com.buildingnote.zone.entity.Zone;
 import com.buildingnote.zone.repository.ZoneRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +47,32 @@ public class ExcelExportService {
 
             List<Zone> zones = zoneRepository.findAll();
             List<Building> allBuildings = buildingRepository.findAllWithZone();
+
+            // ── 벌크 조회로 N+1 방지 ──────────────────────────────────────
+            List<UUID> buildingIds = allBuildings.stream().map(Building::getId).toList();
+
+            // 건물 ID → 폼 스키마 맵
+            Map<UUID, FormSchema> schemaByBuilding = formSchemaRepository
+                    .findByBuildingIdIn(buildingIds)
+                    .stream()
+                    .collect(Collectors.toMap(s -> s.getBuilding().getId(), s -> s));
+
+            // 건물 ID → 호실 목록 맵
+            Map<UUID, List<Unit>> unitsByBuilding = unitRepository
+                    .findByBuildingIdInOrderBySortOrderAsc(buildingIds)
+                    .stream()
+                    .collect(Collectors.groupingBy(u -> u.getBuilding().getId()));
+
+            // 전체 호실 ID → 기록 맵
+            List<UUID> allUnitIds = unitsByBuilding.values().stream()
+                    .flatMap(List::stream)
+                    .map(Unit::getId)
+                    .toList();
+            Map<UUID, UnitRecord> recordByUnit = unitRecordRepository
+                    .findByUnitIdIn(allUnitIds)
+                    .stream()
+                    .collect(Collectors.toMap(r -> r.getUnit().getId(), r -> r));
+            // ─────────────────────────────────────────────────────────────
 
             // 구역별로 건물 그룹핑 (구역 없는 건물 포함)
             Map<String, List<Building>> byZone = new LinkedHashMap<>();
@@ -84,9 +109,9 @@ public class ExcelExportService {
                     buildingCell.setCellValue("▶ " + building.getName() + (building.getAddress() != null ? " (" + building.getAddress() + ")" : ""));
                     buildingCell.setCellStyle(boldStyle);
 
-                    // 폼 스키마 로드
-                    Optional<FormSchema> schemaOpt = formSchemaRepository.findByBuildingId(building.getId());
-                    List<FormField> fields = schemaOpt.map(FormSchema::getFields).orElse(List.of());
+                    // 폼 스키마 (캐시된 맵에서 조회)
+                    FormSchema schema = schemaByBuilding.get(building.getId());
+                    List<FormField> fields = schema != null ? schema.getFields() : List.of();
                     List<FormField> sortedFields = fields.stream()
                             .sorted(Comparator.comparingInt(FormField::getSortOrder))
                             .collect(Collectors.toList());
@@ -102,12 +127,12 @@ public class ExcelExportService {
                     }
                     createHeaderCell(colHeader, col, "메모", headerStyle);
 
-                    // 유닛 데이터
-                    List<Unit> units = unitRepository.findByBuildingIdOrderBySortOrderAsc(building.getId());
+                    // 유닛 데이터 (캐시된 맵에서 조회)
+                    List<Unit> units = unitsByBuilding.getOrDefault(building.getId(), List.of());
                     for (Unit unit : units) {
                         Row dataRow = sheet.createRow(rowIdx++);
-                        Optional<UnitRecord> recordOpt = unitRecordRepository.findByUnitId(unit.getId());
-                        Map<String, Object> data = recordOpt.map(UnitRecord::getData).orElse(Map.of());
+                        UnitRecord record = recordByUnit.get(unit.getId());
+                        Map<String, Object> data = record != null ? record.getData() : Map.of();
 
                         col = 0;
                         dataRow.createCell(col++).setCellValue(unit.getName());
