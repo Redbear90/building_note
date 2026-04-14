@@ -3,9 +3,11 @@ import type { ApiResponse, Building } from '@/types'
 
 /** 건물 API */
 export const buildingApi = {
-  /** 건물 목록 조회 (zoneId 필터 선택) */
-  getAll: async (zoneId?: string): Promise<Building[]> => {
-    const params = zoneId ? { zoneId } : {}
+  /** 건물 목록 조회 (zoneId 필터 + 건물명/주소 검색 선택) */
+  getAll: async (zoneId?: string, search?: string): Promise<Building[]> => {
+    const params: Record<string, string> = {}
+    if (zoneId) params.zoneId = zoneId
+    if (search) params.search = search
     const { data } = await axiosInstance.get<ApiResponse<Building[]>>('/buildings', { params })
     return data.data
   },

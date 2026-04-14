@@ -48,6 +48,11 @@ export function polygonCenter(polygon: [number, number][]): { lat: number; lng: 
   return { lat, lng }
 }
 
+/** 층수 표시 (음수 → 지하N층, 양수 → N층) */
+export function formatFloor(floor: number): string {
+  return floor < 0 ? `지하${Math.abs(floor)}층` : `${floor}층`
+}
+
 /** 디바운스 함수 */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,

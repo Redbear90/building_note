@@ -28,11 +28,16 @@ public class BuildingService {
     private final ZoneRepository zoneRepository;
 
     /**
-     * 건물 목록 조회 (zoneId 필터 선택)
+     * 건물 목록 조회 (zoneId 필터 + 건물명/주소 검색 선택)
      */
-    public List<BuildingResponse> getBuildings(UUID zoneId) {
+    public List<BuildingResponse> getBuildings(UUID zoneId, String search) {
+        String keyword = (search != null && !search.isBlank()) ? search.trim() : null;
         List<Building> buildings;
-        if (zoneId != null) {
+        if (keyword != null && zoneId != null) {
+            buildings = buildingRepository.findByZoneIdAndKeyword(zoneId, keyword);
+        } else if (keyword != null) {
+            buildings = buildingRepository.findByKeyword(keyword);
+        } else if (zoneId != null) {
             buildings = buildingRepository.findByZoneIdWithZone(zoneId);
         } else {
             buildings = buildingRepository.findAllWithZone();

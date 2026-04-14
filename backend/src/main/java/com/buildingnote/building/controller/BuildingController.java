@@ -31,12 +31,13 @@ public class BuildingController {
 
     private final BuildingService buildingService;
 
-    @Operation(summary = "건물 목록 조회", description = "지도 마커 표시용 건물 목록. zoneId로 필터링 가능.")
+    @Operation(summary = "건물 목록 조회", description = "지도 마커 표시용 건물 목록. zoneId로 필터링, search로 건물명/주소 검색 가능.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<BuildingResponse>>> getBuildings(
-            @RequestParam(required = false) UUID zoneId) {
+            @RequestParam(required = false) UUID zoneId,
+            @RequestParam(required = false) String search) {
 
-        return ResponseEntity.ok(ApiResponse.success(buildingService.getBuildings(zoneId)));
+        return ResponseEntity.ok(ApiResponse.success(buildingService.getBuildings(zoneId, search)));
     }
 
     @Operation(summary = "건물 상세 조회")

@@ -5,15 +5,15 @@ import type { Building } from '@/types'
 /** 쿼리 키 상수 */
 export const buildingKeys = {
   all: ['buildings'] as const,
-  list: (zoneId?: string) => [...buildingKeys.all, 'list', { zoneId }] as const,
+  list: (zoneId?: string, search?: string) => [...buildingKeys.all, 'list', { zoneId, search }] as const,
   detail: (id: string) => [...buildingKeys.all, 'detail', id] as const,
 }
 
 /** 건물 목록 조회 훅 */
-export const useBuildings = (zoneId?: string) => {
+export const useBuildings = (zoneId?: string, search?: string) => {
   return useQuery({
-    queryKey: buildingKeys.list(zoneId),
-    queryFn: () => buildingApi.getAll(zoneId),
+    queryKey: buildingKeys.list(zoneId, search),
+    queryFn: () => buildingApi.getAll(zoneId, search),
     staleTime: 1000 * 60 * 5,  // 5분
   })
 }

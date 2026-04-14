@@ -29,4 +29,16 @@ public interface BuildingRepository extends JpaRepository<Building, UUID> {
      */
     @Query("SELECT b FROM Building b LEFT JOIN FETCH b.zone WHERE b.zone.id = :zoneId ORDER BY b.createdAt DESC")
     List<Building> findByZoneIdWithZone(@Param("zoneId") UUID zoneId);
+
+    /**
+     * 건물명 또는 주소 검색 (구역 필터 + 키워드)
+     */
+    @Query("SELECT b FROM Building b LEFT JOIN FETCH b.zone WHERE b.zone.id = :zoneId AND (LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(b.address) LIKE LOWER(CONCAT('%', :search, '%'))) ORDER BY b.createdAt DESC")
+    List<Building> findByZoneIdAndKeyword(@Param("zoneId") UUID zoneId, @Param("search") String search);
+
+    /**
+     * 건물명 또는 주소 검색 (전체 구역)
+     */
+    @Query("SELECT b FROM Building b LEFT JOIN FETCH b.zone WHERE LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(b.address) LIKE LOWER(CONCAT('%', :search, '%')) ORDER BY b.createdAt DESC")
+    List<Building> findByKeyword(@Param("search") String search);
 }

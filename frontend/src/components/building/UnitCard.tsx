@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '@/lib/utils'
+import { cn, formatFloor } from '@/lib/utils'
 import { useUnitRecord } from '@/queries/useRecordQueries'
 import type { Unit } from '@/types'
 
@@ -78,13 +78,13 @@ export const UnitCard: React.FC<UnitCardProps> = ({ unit, statusFieldId, onClick
 
       {/* 호실 번호 */}
       <p className={cn('text-sm font-bold leading-tight', isActive ? 'text-white' : 'text-gray-900')}>
-        {unit.name}
+        {unit.name.replace(/^(-?\d+)/, (_, n) => parseInt(n) < 0 ? `B${Math.abs(parseInt(n))}` : n)}
       </p>
 
       {/* 층 정보 */}
       {unit.floor != null && (
         <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-100' : 'opacity-70')}>
-          {unit.floor}층
+          {formatFloor(unit.floor)}
         </p>
       )}
 

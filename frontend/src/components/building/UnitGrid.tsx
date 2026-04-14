@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { formatFloor } from '@/lib/utils'
 import { Plus, Trash2, Settings, Wand2 } from 'lucide-react'
 import { UnitCard } from './UnitCard'
 import { UnitDetailModal } from './UnitDetailModal'
@@ -61,10 +62,15 @@ export const UnitGrid: React.FC<UnitGridProps> = ({ building }) => {
 
   const handleAddUnit = async () => {
     if (!unitForm.name.trim()) return
+    const floorNum = unitForm.floor ? parseInt(unitForm.floor) : undefined
+    if (floorNum === 0) {
+      alert('0층은 입력할 수 없습니다.')
+      return
+    }
     await createUnit.mutateAsync({
       buildingId: building.id,
       name: unitForm.name,
-      floor: unitForm.floor ? parseInt(unitForm.floor) : undefined,
+      floor: floorNum,
       sortOrder: units.length,
     })
     setUnitForm({ name: '', floor: '' })
@@ -173,11 +179,11 @@ export const UnitGrid: React.FC<UnitGridProps> = ({ building }) => {
               {/* 층 헤더 */}
               <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 sticky top-0 z-10">
                 <div className="flex items-center justify-center w-8 h-8 bg-primary-500 text-white text-sm font-bold rounded">
-                  {floor != null ? floor : '-'}
+                  {floor != null ? (floor < 0 ? `B${Math.abs(floor)}` : floor) : '-'}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-800">
-                    {floor != null ? `${floor}층` : '층 미지정'}
+                    {floor != null ? formatFloor(floor) : '층 미지정'}
                   </p>
                   <p className="text-xs text-gray-400">{floorUnits.length}개 호실</p>
                 </div>

@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect, lazy, Suspense } from 'react'
-import { Plus, Pencil, Trash2, Building2, ChevronRight, GripVertical, MapPin, X, Search, Loader2, Import } from 'lucide-react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
+import { Plus, Pencil, Trash2, Building2, ChevronRight, GripVertical, MapPin, X, Search, Loader2, Import, Wand2, SkipForward } from 'lucide-react'
 import { useBuildings, useCreateBuilding, useDeleteBuilding } from '@/queries/useBuildingQueries'
 import { useUnits, useCreateUnit, useDeleteUnit } from '@/queries/useUnitQueries'
 import { useZones } from '@/queries/useZoneQueries'
 import { useMapStore } from '@/stores/mapStore'
+import { BulkUnitCreateModal } from '@/components/building/BulkUnitCreateModal'
 import type { Building, KakaoAddressSearchResult } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +19,9 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
   const [showAddBuilding, setShowAddBuilding] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showAddUnit, setShowAddUnit] = useState(false)
+  // 건물 추가 후 호실 생성 단계 (null=없음, Building=대상건물)
+  const [pendingUnitBuilding, setPendingUnitBuilding] = useState<Building | null>(null)
+  const [showBulkModal, setShowBulkModal] = useState(false)
 
   const [buildingForm, setBuildingForm] = useState({
     name: '', address: '', lat: '', lng: '', zoneId: ''
@@ -29,7 +33,7 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
   const [unitForm, setUnitForm] = useState({ name: '', floor: '' })
 
   const { data: buildings = [] } = useBuildings()
-  const { data: units = [] } = useUnits(selectedBuilding?.id ?? null)
+  const { data: units = [] } = useUnits(selectedBuilding?.id ?? pendingUnitBuilding?.id ?? null)
   const { data: zones = [] } = useZones()
   const createBuilding = useCreateBuilding()
   const deleteBuilding = useDeleteBuilding()
@@ -90,7 +94,7 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
     })
   }
 
-  /** 건물 추가 */
+  /** 건물 추가 → 호실 생성 단계로 이동 */
   const handleAddBuilding = async () => {
     if (!buildingForm.name) {
       alert('건물명을 입력하세요.')
@@ -100,7 +104,7 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
       alert('주소 검색 또는 지도에서 위치를 선택하세요.')
       return
     }
-    await createBuilding.mutateAsync({
+    const newBuilding = await createBuilding.mutateAsync({
       name: buildingForm.name,
       address: buildingForm.address || undefined,
       lat: parseFloat(buildingForm.lat),
@@ -110,15 +114,39 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
     setBuildingForm({ name: '', address: '', lat: '', lng: '', zoneId: '' })
     setAddressResults([])
     setShowAddBuilding(false)
+    // 호실 생성 단계로 진입
+    setPendingUnitBuilding(newBuilding)
+  }
+
+  /** 단독주택 기본값으로 1층 1호실 자동 생성 후 완료 */
+  const handleSkipWithDefault = async () => {
+    if (!pendingUnitBuilding) return
+    await createUnit.mutateAsync({
+      buildingId: pendingUnitBuilding.id,
+      name: '101호',
+      floor: 1,
+      sortOrder: 0,
+    })
+    setPendingUnitBuilding(null)
+  }
+
+  /** 호실 생성 단계 완료 */
+  const handleFinishUnitSetup = () => {
+    setPendingUnitBuilding(null)
   }
 
   /** 호실 추가 */
   const handleAddUnit = async () => {
     if (!selectedBuilding || !unitForm.name) return
+    const floorNum = unitForm.floor ? parseInt(unitForm.floor) : undefined
+    if (floorNum === 0) {
+      alert('0층은 입력할 수 없습니다.')
+      return
+    }
     await createUnit.mutateAsync({
       buildingId: selectedBuilding.id,
       name: unitForm.name,
-      floor: unitForm.floor ? parseInt(unitForm.floor) : undefined,
+      floor: floorNum,
       sortOrder: units.length,
     })
     setUnitForm({ name: '', floor: '' })
@@ -132,7 +160,129 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
           <BuildingImportModal onClose={() => setShowImportModal(false)} />
         </Suspense>
       )}
-      {!selectedBuilding ? (
+
+      {/* 일괄 생성 모달 (건물 추가 직후 & 기존 관리 모두 공용) */}
+      {showBulkModal && (pendingUnitBuilding || selectedBuilding) && (
+        <BulkUnitCreateModal
+          buildingId={(pendingUnitBuilding ?? selectedBuilding)!.id}
+          currentUnitCount={units.length}
+          onClose={() => setShowBulkModal(false)}
+        />
+      )}
+
+      {/* ── 단계 2: 건물 추가 직후 호실 생성 ── */}
+      {pendingUnitBuilding ? (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary-500 text-white text-xs font-bold">2</span>
+            <p className="text-sm font-semibold text-gray-800">호실 생성</p>
+            <span className="text-xs text-gray-400">— {pendingUnitBuilding.name}</span>
+          </div>
+          <p className="text-xs text-gray-500">호실을 직접 추가하거나 일괄 생성하세요. 단독주택이라면 넘기기를 누르면 1층 1호실이 자동 생성됩니다.</p>
+
+          {/* 액션 버튼 */}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="flex items-center gap-2 w-full px-4 py-3 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition-colors"
+            >
+              <Wand2 className="w-4 h-4" />
+              호실 일괄 생성
+            </button>
+            <button
+              onClick={() => setShowAddUnit((v) => !v)}
+              className="flex items-center gap-2 w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:border-primary-400 hover:text-primary-600 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              개별 호실 추가
+            </button>
+          </div>
+
+          {/* 개별 추가 인라인 폼 */}
+          {showAddUnit && (
+            <div className="p-3 bg-gray-50 rounded-md border space-y-2">
+              <input
+                type="text"
+                placeholder="호실명 (예: 101호) *"
+                value={unitForm.name}
+                onChange={(e) => setUnitForm((p) => ({ ...p, name: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddUnit()}
+                autoFocus
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              <input
+                type="number"
+                placeholder="층수"
+                value={unitForm.floor}
+                onChange={(e) => setUnitForm((p) => ({ ...p, floor: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    const floorNum = unitForm.floor ? parseInt(unitForm.floor) : undefined
+                    if (floorNum === 0) { alert('0층은 입력할 수 없습니다.'); return }
+                    if (!unitForm.name.trim()) return
+                    await createUnit.mutateAsync({
+                      buildingId: pendingUnitBuilding.id,
+                      name: unitForm.name,
+                      floor: floorNum,
+                      sortOrder: units.length,
+                    })
+                    setUnitForm({ name: '', floor: '' })
+                  }}
+                  disabled={createUnit.isPending}
+                  className="flex-1 py-2 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 disabled:opacity-60"
+                >
+                  추가
+                </button>
+                <button
+                  onClick={() => { setShowAddUnit(false); setUnitForm({ name: '', floor: '' }) }}
+                  className="flex-1 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 추가된 호실 목록 */}
+          {units.length > 0 && (
+            <div className="space-y-1">
+              {units.map((unit) => (
+                <div key={unit.id} className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 bg-white">
+                  <Building2 className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-800">{unit.name}</span>
+                  {unit.floor != null && (
+                    <span className="text-xs text-gray-400">{unit.floor < 0 ? `지하${Math.abs(unit.floor)}층` : `${unit.floor}층`}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 하단 완료/넘기기 */}
+          <div className="flex gap-2 pt-2 border-t">
+            {units.length > 0 ? (
+              <button
+                onClick={handleFinishUnitSetup}
+                className="flex-1 py-2.5 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition-colors"
+              >
+                완료 ({units.length}개 호실)
+              </button>
+            ) : (
+              <button
+                onClick={handleSkipWithDefault}
+                disabled={createUnit.isPending}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 disabled:opacity-60 transition-colors"
+              >
+                <SkipForward className="w-4 h-4" />
+                넘기기 (단독주택 1층 1호실 자동 생성)
+              </button>
+            )}
+          </div>
+        </>
+      ) : !selectedBuilding ? (
         <>
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-gray-500">건물 ({buildings.length})</p>
@@ -416,3 +566,4 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
 }
 
 export default BuildingManager
+

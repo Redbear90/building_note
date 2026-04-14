@@ -11,7 +11,7 @@ interface BottomSheetProps {
 
 /** 스냅 포인트별 translateY 값 */
 const SNAP_TRANSLATE: Record<SnapPoint, string> = {
-  hidden: 'translateY(100%)',
+  hidden: 'translateY(calc(100% - 44px))',  // 핸들+검색창 살짝 노출
   half: 'translateY(55%)',
   full: 'translateY(10%)',
 }

@@ -8,6 +8,7 @@ import { useFormSchema } from '@/queries/useFormSchemaQueries'
 import { useUnitRecord, useSaveRecord } from '@/queries/useRecordQueries'
 import { useAuthStore } from '@/stores/authStore'
 import { Lock } from 'lucide-react'
+import { formatFloor } from '@/lib/utils'
 import type { Building, Unit } from '@/types'
 
 interface UnitDetailModalProps {
@@ -88,7 +89,7 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
       <div className="px-5 py-4 space-y-4">
         {/* 층 정보 */}
         {unit.floor != null && (
-          <p className="text-sm text-gray-500">{unit.floor}층</p>
+          <p className="text-sm text-gray-500">{formatFloor(unit.floor)}</p>
         )}
 
         {/* 비인증 안내 */}

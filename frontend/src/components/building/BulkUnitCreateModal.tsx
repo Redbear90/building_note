@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Wand2, Loader2 } from 'lucide-react'
 import { useCreateUnit } from '@/queries/useUnitQueries'
+import { formatFloor } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
 interface BulkUnitCreateModalProps {
@@ -34,9 +35,11 @@ function generateUnits(config: BulkConfig): { name: string; floor: number }[] {
   const result: { name: string; floor: number }[] = []
 
   for (let floor = floorStart; floor <= floorEnd; floor++) {
+    if (floor === 0) continue  // 0층 생략
     for (let unit = 1; unit <= unitsPerFloor; unit++) {
       const unitNum = String(unit).padStart(unitDigits, '0')
-      const name = `${config.prefix}${floor}${unitNum}${config.suffix}`
+      const floorPart = floor < 0 ? `B${Math.abs(floor)}` : `${floor}`
+      const name = `${config.prefix}${floorPart}${unitNum}${config.suffix}`
       result.push({ name, floor })
     }
   }
@@ -90,7 +93,7 @@ export const BulkUnitCreateModal: React.FC<BulkUnitCreateModalProps> = ({
   const floorStart = parseInt(config.floorStart)
   const floorEnd = parseInt(config.floorEnd)
   const floorCount = (!isNaN(floorStart) && !isNaN(floorEnd) && floorEnd >= floorStart)
-    ? floorEnd - floorStart + 1
+    ? floorEnd - floorStart + 1 - (floorStart <= 0 && floorEnd >= 0 ? 1 : 0)
     : 0
 
   return createPortal(
@@ -216,7 +219,7 @@ export const BulkUnitCreateModal: React.FC<BulkUnitCreateModalProps> = ({
                     return (
                       <div key={floor} className="border-b last:border-b-0">
                         <div className="px-3 py-1.5 bg-gray-50 flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-600">{floor}층</span>
+                          <span className="text-xs font-semibold text-gray-600">{formatFloor(floor)}</span>
                           <span className="text-xs text-gray-400">{floorUnits.length}개</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5 px-3 py-2">

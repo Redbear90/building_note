@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, ChevronRight, Search, Building2 } from 'lucide-react'
 import { useBuildings } from '@/queries/useBuildingQueries'
@@ -15,17 +15,19 @@ const BuildingListPage: React.FC = () => {
   const navigate = useNavigate()
   const { selectBuilding } = useMapStore()
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedZoneId, setSelectedZoneId] = useState<string>('')
 
-  const { data: buildings = [], isLoading } = useBuildings(selectedZoneId || undefined)
-  const { data: zones = [] } = useZones()
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-  // 검색 필터링
-  const filteredBuildings = buildings.filter(
-    (b) =>
-      b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.address?.toLowerCase().includes(searchQuery.toLowerCase())
+  const { data: buildings = [], isLoading } = useBuildings(
+    selectedZoneId || undefined,
+    debouncedSearch || undefined
   )
+  const { data: zones = [] } = useZones()
 
   const handleBuildingClick = (buildingId: string) => {
     const building = buildings.find((b) => b.id === buildingId)
@@ -85,7 +87,7 @@ const BuildingListPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <BuildingListSkeleton />
-        ) : filteredBuildings.length === 0 ? (
+        ) : buildings.length === 0 ? (
           <EmptyState
             icon={Building2}
             title="건물이 없습니다"
@@ -93,7 +95,7 @@ const BuildingListPage: React.FC = () => {
           />
         ) : (
           <ul className="divide-y bg-white">
-            {filteredBuildings.map((building) => (
+            {buildings.map((building) => (
               <li key={building.id}>
                 <button
                   onClick={() => handleBuildingClick(building.id)}
