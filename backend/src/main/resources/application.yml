@@ -18,7 +18,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate        # 운영은 validate, 개발은 update
+      ddl-auto: update          # 스키마 자동 동기화
     show-sql: false
     open-in-view: false         # OSIV 비활성화 (성능 이슈 방지)
     properties:
