@@ -91,6 +91,7 @@ export const useKakaoMap = (
         red:    { border: '#ef4444', bg: '#fef2f2', tail: '#ef4444' },
         yellow: { border: '#eab308', bg: '#fefce8', tail: '#eab308' },
         blue:   { border: '#3b82f6', bg: '#eff6ff', tail: '#3b82f6' },
+        green:  { border: '#22c55e', bg: '#f0fdf4', tail: '#22c55e' },
       }
       const style = colorStyles[color ?? 'gray']
 

@@ -4,7 +4,7 @@ import { unitKeys } from '@/queries/useUnitQueries'
 import { recordKeys } from '@/queries/useRecordQueries'
 import type { Building, Unit } from '@/types'
 
-export type BuildingColor = 'gray' | 'red' | 'yellow' | 'blue'
+export type BuildingColor = 'gray' | 'red' | 'yellow' | 'blue' | 'green'
 
 /**
  * 모든 건물의 상태 색상을 계산하는 훅
@@ -40,10 +40,13 @@ export const useBuildingColors = (buildings: Building[]): Record<string, Buildin
 
       const ratio = activeCount / units.length
       if (ratio === 1) {
+        next[building.id] = 'green'
+      } else if (ratio >= 0.5) {
         next[building.id] = 'blue'
       } else if (ratio > 0) {
         next[building.id] = 'yellow'
       } else {
+        // 세대는 있지만 입주율 0%
         next[building.id] = 'red'
       }
     }
