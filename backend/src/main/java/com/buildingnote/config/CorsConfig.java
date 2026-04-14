@@ -29,7 +29,9 @@ public class CorsConfig {
                 "http://localhost:4173",      // Vite preview 포트
                 "http://192.168.*.*:5173",    // 로컬 네트워크 (모바일 테스트)
                 "http://10.*.*.*:5173",       // 로컬 네트워크 (모바일 테스트)
-                "https://*.buildingnote.com"  // 배포 도메인
+                "https://*.buildingnote.com", // 배포 도메인
+                "https://*.vercel.app",       // Vercel 배포 도메인
+                "https://*.onrender.com"      // Render 도메인
         ));
 
         // 허용 HTTP 메서드
