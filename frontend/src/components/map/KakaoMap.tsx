@@ -21,7 +21,8 @@ interface KakaoMapProps {
 const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
   const mapRef = useRef<HTMLDivElement>(null)
   const initialMoveRef = useRef(false)
-  const { selectBuilding, setMapReady, registerDrawingHandlers, registerMoveToCenter, registerShowTempMarker, registerGetBounds, isPickingLocation, stopPickingLocation } = useMapStore()
+  const pendingMoveDoneRef = useRef(false)
+  const { selectBuilding, selectedBuilding, setMapReady, registerDrawingHandlers, registerMoveToCenter, registerShowTempMarker, registerGetBounds, isPickingLocation, stopPickingLocation } = useMapStore()
 
   const { data: buildings = [] } = useBuildings()
   const { data: zones = [] } = useZones()
@@ -64,6 +65,18 @@ const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
       initialMoveRef.current = true
     }
   }, [isReady, zones, moveToCenter])
+
+  // 건물 선택이 바뀌면 이동 플래그 리셋
+  useEffect(() => {
+    pendingMoveDoneRef.current = false
+  }, [selectedBuilding])
+
+  // 건물 선택 시 해당 위치로 지도 이동 (목록 → 지도 페이지 이동 대응)
+  useEffect(() => {
+    if (!isReady || !selectedBuilding || pendingMoveDoneRef.current) return
+    pendingMoveDoneRef.current = true
+    moveToCenter(selectedBuilding.lat, selectedBuilding.lng, 1)
+  }, [isReady, selectedBuilding, moveToCenter])
 
   // 구역 폴리곤 렌더링
   useEffect(() => {

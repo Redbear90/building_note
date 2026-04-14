@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/common/EmptyState'
  */
 const BuildingListPage: React.FC = () => {
   const navigate = useNavigate()
-  const { selectBuilding } = useMapStore()
+  const { selectBuilding, moveToCenter } = useMapStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedZoneId, setSelectedZoneId] = useState<string>('')
@@ -34,6 +34,10 @@ const BuildingListPage: React.FC = () => {
     if (building) {
       selectBuilding(building)
       navigate('/')  // 지도 페이지로 이동
+      // 지도가 준비된 경우 해당 건물 위치로 이동
+      if (moveToCenter) {
+        moveToCenter(building.lat, building.lng, 1)
+      }
     }
   }
 
