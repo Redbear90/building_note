@@ -21,4 +21,10 @@ public interface UnitRecordRepository extends JpaRepository<UnitRecord, UUID> {
      */
     @Query("SELECT r FROM UnitRecord r WHERE r.unit.id IN :unitIds")
     List<UnitRecord> findByUnitIdIn(@Param("unitIds") List<UUID> unitIds);
+
+    /**
+     * __active = 'true' 인 레코드 수 (동의 가구)
+     */
+    @Query(value = "SELECT COUNT(*) FROM unit_records WHERE data->>'__active' = 'true'", nativeQuery = true)
+    long countActiveUnits();
 }
