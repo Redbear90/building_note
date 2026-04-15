@@ -12,7 +12,7 @@ export const useAuth = () => {
     async (email: string, password: string) => {
       try {
         await login(email, password)
-        navigate('/')
+        navigate('/admin')
       } catch (error) {
         const axiosError = error as AxiosError<{ message: string }>
         const msg = axiosError.response?.data?.message

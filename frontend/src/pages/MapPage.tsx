@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react'
-import { Map, Building2, Settings, LogOut } from 'lucide-react'
+import { Map, Building2, Settings, LogOut, LayoutDashboard } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import KakaoMap from '@/components/map/KakaoMap'
 import { BuildingBottomSheet } from '@/components/building/BuildingBottomSheet'
@@ -31,6 +31,15 @@ const MapPage: React.FC = () => {
         <div className="flex items-center gap-1">
           {isAdmin && (
             <>
+              {/* 데스크톱: 관리자 페이지 링크 */}
+              <Link
+                to="/admin"
+                className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-md transition-colors"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                관리자 페이지
+              </Link>
+              {/* 지도 위 패널 토글 */}
               <button
                 onClick={togglePanel}
                 className={cn(

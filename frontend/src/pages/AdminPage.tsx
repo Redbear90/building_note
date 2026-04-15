@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useBuildings } from '@/queries/useBuildingQueries'
 import { useZones } from '@/queries/useZoneQueries'
+import { useTotalUnitCount, useUnitStats } from '@/queries/useUnitQueries'
 import axiosInstance from '@/api/axiosInstance'
 import { Skeleton } from '@/components/common/Skeleton'
 import { cn } from '@/lib/utils'
@@ -23,6 +24,8 @@ const AdminPage: React.FC = () => {
   const { logout } = useAuth()
   const { data: buildings = [] } = useBuildings()
   const { data: zones = [] } = useZones()
+  const { data: totalUnitCount = '-' } = useTotalUnitCount()
+  const { data: unitStats } = useUnitStats()
 
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [editingBuilding, setEditingBuilding] = useState<Building | null>(null)
@@ -145,12 +148,12 @@ const AdminPage: React.FC = () => {
               <div className="space-y-6">
                 <h2 className="text-lg font-bold text-gray-900">대시보드</h2>
 
-                {/* 요약 카드 */}
+                {/* 요약 카드 - 상단 행 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { label: '등록된 구역', value: zones.length, icon: Map, color: 'bg-blue-50 text-blue-600' },
                     { label: '등록된 건물', value: buildings.length, icon: Building2, color: 'bg-green-50 text-green-600' },
-                    { label: '총 호실', value: '-', icon: FileText, color: 'bg-purple-50 text-purple-600' },
+                    { label: '전체 가구', value: totalUnitCount, icon: FileText, color: 'bg-purple-50 text-purple-600' },
                   ].map(({ label, value, icon: Icon, color }) => (
                     <div key={label} className="bg-white rounded-lg border p-5">
                       <div className="flex items-center justify-between">
@@ -162,6 +165,28 @@ const AdminPage: React.FC = () => {
                           <Icon className="w-6 h-6" />
                         </div>
                       </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 참여 현황 카드 */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {(() => {
+                    const total = unitStats?.total ?? 0
+                    const active = unitStats?.active ?? 0
+                    const inactive = unitStats?.inactive ?? 0
+                    const rate = total > 0 ? ((active / total) * 100).toFixed(2) : '0.00'
+                    return [
+                      { label: '동의 가구', value: active, sub: '슬라이드 ON', color: 'border-l-4 border-l-green-500', textColor: 'text-green-600' },
+                      { label: '미참여 가구', value: inactive, sub: '슬라이드 OFF', color: 'border-l-4 border-l-gray-300', textColor: 'text-gray-500' },
+                      { label: '전체 가구', value: total, sub: '전체 등록 가구', color: 'border-l-4 border-l-purple-400', textColor: 'text-purple-600' },
+                      { label: '참여율', value: `${rate}%`, sub: '동의/전체', color: 'border-l-4 border-l-primary-500', textColor: 'text-primary-600' },
+                    ]
+                  })().map(({ label, value, sub, color, textColor }) => (
+                    <div key={label} className={`bg-white rounded-lg border p-5 ${color}`}>
+                      <p className="text-sm text-gray-500">{label}</p>
+                      <p className={`text-2xl font-bold mt-1 ${textColor}`}>{unitStats ? value : '-'}</p>
+                      <p className="text-xs text-gray-400 mt-1">{sub}</p>
                     </div>
                   ))}
                 </div>

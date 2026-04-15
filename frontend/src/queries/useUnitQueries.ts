@@ -4,7 +4,27 @@ import type { Unit, UnitReorderItem } from '@/types'
 
 export const unitKeys = {
   all: ['units'] as const,
+  count: ['units', 'count'] as const,
+  stats: ['units', 'stats'] as const,
   byBuilding: (buildingId: string) => [...unitKeys.all, 'building', buildingId] as const,
+}
+
+/** 전체 호실 수 조회 */
+export const useTotalUnitCount = () => {
+  return useQuery({
+    queryKey: unitKeys.count,
+    queryFn: () => unitApi.getTotalCount(),
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+/** 호실 통계 조회 (전체/동의/미참여) */
+export const useUnitStats = () => {
+  return useQuery({
+    queryKey: unitKeys.stats,
+    queryFn: () => unitApi.getStats(),
+    staleTime: 1000 * 60 * 5,
+  })
 }
 
 /** 건물의 호실 목록 조회 */

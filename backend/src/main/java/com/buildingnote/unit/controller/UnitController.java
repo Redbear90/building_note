@@ -28,6 +28,18 @@ public class UnitController {
 
     private final UnitService unitService;
 
+    @Operation(summary = "전체 호실 수 조회")
+    @GetMapping("/api/v1/units/count")
+    public ResponseEntity<ApiResponse<Long>> getTotalUnitCount() {
+        return ResponseEntity.ok(ApiResponse.success(unitService.getTotalCount()));
+    }
+
+    @Operation(summary = "호실 통계 조회 (전체/동의/미참여)")
+    @GetMapping("/api/v1/units/stats")
+    public ResponseEntity<ApiResponse<UnitService.UnitStats>> getUnitStats() {
+        return ResponseEntity.ok(ApiResponse.success(unitService.getStats()));
+    }
+
     @Operation(summary = "호실 목록 조회")
     @GetMapping("/api/v1/buildings/{buildingId}/units")
     public ResponseEntity<ApiResponse<List<UnitResponse>>> getUnits(@PathVariable UUID buildingId) {

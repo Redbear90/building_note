@@ -10,6 +10,7 @@ import com.buildingnote.unit.dto.UnitRequest;
 import com.buildingnote.unit.dto.UnitResponse;
 import com.buildingnote.unit.entity.Unit;
 import com.buildingnote.unit.repository.UnitRepository;
+import com.buildingnote.record.repository.UnitRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,26 @@ public class UnitService {
     private final UnitRepository unitRepository;
     private final BuildingRepository buildingRepository;
     private final UnitCommentRepository commentRepository;
+    private final UnitRecordRepository unitRecordRepository;
+
+    /**
+     * 전체 호실 수 조회
+     */
+    public long getTotalCount() {
+        return unitRepository.count();
+    }
+
+    /**
+     * 대시보드 통계: 전체/동의/미참여 가구 수
+     */
+    public UnitStats getStats() {
+        long total = unitRepository.count();
+        long active = unitRecordRepository.countActiveUnits();
+        long inactive = total - active;
+        return new UnitStats(total, active, inactive);
+    }
+
+    public record UnitStats(long total, long active, long inactive) {}
 
     /**
      * 건물의 호실 목록 조회 (정렬 순서 기준)

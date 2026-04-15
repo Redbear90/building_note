@@ -28,4 +28,9 @@ public interface UnitRepository extends JpaRepository<Unit, UUID> {
      * 건물 내 최대 정렬 순서 조회 (새 호실 추가 시 사용)
      */
     int countByBuildingId(UUID buildingId);
+
+    /**
+     * 전체 호실 수 조회
+     */
+    long count();
 }
