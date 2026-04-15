@@ -1,4 +1,3 @@
-import React from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import MapPage from '@/pages/MapPage'
 import BuildingListPage from '@/pages/BuildingListPage'

@@ -19,6 +19,8 @@ interface UseKakaoMapReturn {
   startDrawingZone: () => void
   stopDrawingZone: () => [number, number][]
   moveToBuilding: (building: Building) => void
+  moveToCenter: (lat: number, lng: number, level?: number) => void
+  showTempMarker: (lat: number, lng: number) => void
   getBounds: () => { swLat: number; swLng: number; neLat: number; neLng: number } | null
 }
 

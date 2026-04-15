@@ -71,7 +71,7 @@ export const useAuthStore = create<AuthState>()(
         removeItem: (name) => sessionStorage.removeItem(name),
       },
       // 토큰은 persist에서 제외 (메모리에만 유지)
-      partialize: (state) => ({ user: state.user, isAdmin: state.isAdmin }),
+      partialize: (state): Partial<AuthState> => ({ user: state.user, isAdmin: state.isAdmin }),
     }
   )
 )
