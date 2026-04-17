@@ -115,7 +115,7 @@ const AdminLoginPage: React.FC = () => {
           {/* 테스트 계정 안내 */}
           <div className="pt-2 border-t text-center">
             <p className="text-xs text-gray-400">
-              테스트 계정: admin@buildingnote.com / admin1234
+              테스트 계정: admin@naver.com / admin1234
             </p>
           </div>
         </form>
