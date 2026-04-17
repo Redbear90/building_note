@@ -47,13 +47,12 @@ const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
 
   // 지도 준비 완료 알림 + 핸들러 등록
   useEffect(() => {
-    setMapReady(isReady)
-    if (isReady) {
-      registerDrawingHandlers(startDrawingZone, stopDrawingZone)
-      registerMoveToCenter(moveToCenter)
-      registerShowTempMarker(showTempMarker)
-      registerGetBounds(getBounds as () => { swLat: number; swLng: number; neLat: number; neLng: number })
-    }
+    if (!isReady) return
+    setMapReady(true)
+    registerDrawingHandlers(startDrawingZone, stopDrawingZone)
+    registerMoveToCenter(moveToCenter)
+    registerShowTempMarker(showTempMarker)
+    registerGetBounds(getBounds as () => { swLat: number; swLng: number; neLat: number; neLng: number })
   }, [isReady, setMapReady, registerDrawingHandlers, startDrawingZone, stopDrawingZone, registerMoveToCenter, moveToCenter, registerShowTempMarker, showTempMarker, registerGetBounds, getBounds])
 
   // 지도 준비 완료 시 첫 번째 구역 중심으로 1회 이동

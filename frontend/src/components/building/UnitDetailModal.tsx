@@ -49,7 +49,6 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
   const isActive = record?.data?.['__active'] === 'true'
 
   const handleToggleActive = async () => {
-    // if (!isAuthenticated) return // [임시 공개] 복구 시 주석 해제
     const currentData = (record?.data ?? {}) as Record<string, string | string[]>
     await saveRecord.mutateAsync({
       unitId: unit.id,
@@ -92,17 +91,6 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
           <p className="text-sm text-gray-500">{formatFloor(unit.floor)}</p>
         )}
 
-        {/* 비인증 안내 */}
-        {/* [임시 공개] 복구 시 주석 해제
-        {!isAuthenticated && (
-          <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <Lock className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            <p className="text-xs text-amber-700">
-              로그인하면 데이터를 입력하고 저장할 수 있습니다.
-            </p>
-          </div>
-        )}
-        */}
 
         {/* 로딩 중 */}
         {isLoading ? (

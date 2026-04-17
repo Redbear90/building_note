@@ -81,8 +81,7 @@ export const UnitCommentSection: React.FC<UnitCommentSectionProps> = ({ unitId }
   const { data: comments = [], isLoading } = useUnitComments(unitId)
   const addComment = useAddComment()
   const accessToken = useAuthStore((s) => s.accessToken)
-  // const isAuthenticated = !!accessToken // [임시 공개] 복구 시 주석 해제
-  const isAuthenticated = true // [임시 공개] 복구 시 이 줄 제거
+  const isAuthenticated = true // TODO: 정식 배포 시 true 제거
   const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const [author, setAuthor] = useState('')

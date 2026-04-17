@@ -51,7 +51,10 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         // 서버에 로그아웃 요청 (리프레시 토큰 쿠키 삭제)
-        authApi.logout().catch(() => {/* 실패해도 클라이언트는 초기화 */})
+        authApi.logout().catch((error) => {
+          console.warn('로그아웃 요청 실패:', error)
+          // 클라이언트 상태는 여전히 초기화 (서버 오류와 무관하게)
+        })
         set({
           accessToken: null,
           user: null,

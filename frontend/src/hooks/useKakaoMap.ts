@@ -9,6 +9,11 @@ interface UseKakaoMapOptions {
   onMapClick?: (lat: number, lng: number) => void
 }
 
+// Kakao SDK 로드 대기 설정
+const KAKAO_SDK_LOAD_TIMEOUT_MS = 10000
+const KAKAO_SDK_LOAD_POLL_INTERVAL_MS = 100
+const ZONE_MIN_POINTS = 3
+
 interface UseKakaoMapReturn {
   map: KakaoMap | null
   isReady: boolean
@@ -41,7 +46,7 @@ export const useKakaoMap = (
 
   // 마커/폴리곤 레퍼런스 (리렌더링 없이 관리)
   const markersRef = useRef<{ overlay: unknown; building: Building }[]>([])
-  const polygonsRef = useRef<unknown[]>([])
+  const polygonsRef = useRef<{ polygon: unknown; listener: unknown }[]>([])
   const tempMarkerRef = useRef<unknown>(null)
 
   // 구역 그리기 관련
@@ -66,9 +71,7 @@ export const useKakaoMap = (
       setIsReady(true)
     }
 
-    // Kakao SDK 스크립트가 아직 로드 중이면 폴링으로 대기 (최대 10초)
-    const MAX_WAIT_MS = 10000
-    const POLL_INTERVAL_MS = 100
+    // Kakao SDK 스크립트가 아직 로드 중이면 폴링으로 대기
     let elapsed = 0
     let timerId: ReturnType<typeof setTimeout>
 
@@ -76,11 +79,11 @@ export const useKakaoMap = (
       if (window.kakao && window.kakao.maps) {
         // autoload=false 이므로 load() 콜백으로 초기화
         window.kakao.maps.load(initMap)
-      } else if (elapsed < MAX_WAIT_MS) {
-        elapsed += POLL_INTERVAL_MS
-        timerId = setTimeout(waitForKakao, POLL_INTERVAL_MS)
+      } else if (elapsed < KAKAO_SDK_LOAD_TIMEOUT_MS) {
+        elapsed += KAKAO_SDK_LOAD_POLL_INTERVAL_MS
+        timerId = setTimeout(waitForKakao, KAKAO_SDK_LOAD_POLL_INTERVAL_MS)
       } else {
-        console.error('[KakaoMap] SDK 로드 실패: 10초 초과')
+        console.error('[KakaoMap] SDK 로드 실패: 타임아웃 초과')
       }
     }
 
@@ -171,23 +174,27 @@ export const useKakaoMap = (
       })
 
       // 폴리곤 클릭 시 해당 구역 중심으로 이동 (현재 레벨 유지)
-      kakao.event.addListener(polygon, 'click', () => {
+      const clickListener = () => {
         const center = polygonCenter(zone.polygon)
         if (center) {
           map.setCenter(new kakao.LatLng(center.lat, center.lng))
         }
-      })
+      }
+      kakao.event.addListener(polygon, 'click', clickListener)
 
-      polygonsRef.current.push(polygon)
+      polygonsRef.current.push({ polygon, listener: clickListener })
     },
     [map]
   )
 
   /** 구역 폴리곤 전체 삭제 */
   const clearZonePolygons = useCallback(() => {
-    polygonsRef.current.forEach((polygon) => {
+    if (!window.kakao) return
+    const kakao = window.kakao.maps
+    polygonsRef.current.forEach(({ polygon, listener }) => {
       // @ts-expect-error: Kakao SDK 동적 메서드 호출
       polygon.setMap(null)
+      kakao.event.removeListener(polygon, 'click', listener as () => void)
     })
     polygonsRef.current = []
   }, [])
@@ -336,13 +343,16 @@ export const useKakaoMap = (
         try {
           const geocoder = new window.kakao.maps.services.Geocoder()
           geocoder.coord2Address(lng, lat, (result, status) => {
-            const address =
-              status === window.kakao.maps.services.Status.OK
-                ? (result[0].road_address?.address_name ?? result[0].address.address_name)
-                : ''
+            let address = ''
+            if (status === window.kakao.maps.services.Status.OK && result?.length > 0) {
+              address = result[0].road_address?.address_name ?? result[0].address.address_name ?? ''
+            } else if (status !== window.kakao.maps.services.Status.OK) {
+              console.warn('역지오코딩 실패:', status)
+            }
             onLocationPicked?.(lat, lng, address)
           })
-        } catch {
+        } catch (error) {
+          console.error('역지오코딩 오류:', error)
           onLocationPicked?.(lat, lng, '')
         }
 

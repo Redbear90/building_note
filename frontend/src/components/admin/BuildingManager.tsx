@@ -59,9 +59,11 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
       setIsSearching(false)
       if (status === window.kakao.maps.services.Status.OK) {
         setAddressResults(results)
-      } else {
+      } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
         setAddressResults([])
-        alert('주소 검색 결과가 없습니다.')
+      } else {
+        console.error('주소 검색 실패:', status)
+        setAddressResults([])
       }
     })
   }

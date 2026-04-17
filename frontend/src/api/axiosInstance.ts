@@ -51,9 +51,14 @@ axiosInstance.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        // 다른 요청이 이미 갱신 중이면 대기
-        return new Promise((resolve) => {
+        // 다른 요청이 이미 갱신 중이면 대기 (최대 5초)
+        return new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('토큰 갱신 타임아웃'))
+          }, 5000)
+
           subscribeTokenRefresh((token) => {
+            clearTimeout(timeout)
             originalRequest.headers.Authorization = `Bearer ${token}`
             resolve(axiosInstance(originalRequest))
           })
