@@ -60,7 +60,7 @@ export const useKakaoMap = (
       const center = new kakao.LatLng(37.5665, 126.9780)
       const kakaoMap = new kakao.Map(mapRef.current, {
         center,
-        level: 3,  // 50m 축척
+        level: 1,  // 20m 축척
       })
       setMap(kakaoMap)
       setIsReady(true)
@@ -268,7 +268,7 @@ export const useKakaoMap = (
 
   /** 지도 중심을 좌표로 이동 (level 선택) */
   const moveToCenter = useCallback(
-    (lat: number, lng: number, level = 3) => {
+    (lat: number, lng: number, level = 1) => {
       if (!map || !window.kakao) return
       const kakao = window.kakao.maps
       map.setCenter(new kakao.LatLng(lat, lng))

@@ -78,7 +78,7 @@ const BuildingManager: React.FC<BuildingManagerProps> = ({ onEditFormSchema }) =
       lng: lng.toFixed(6),
     }))
     setAddressResults([])
-    moveToCenter?.(lat, lng, 3)
+    moveToCenter?.(lat, lng, 1)
     showTempMarker?.(lat, lng)
   }
 

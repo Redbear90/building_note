@@ -61,7 +61,7 @@ const KakaoMap: React.FC<KakaoMapProps> = ({ className }) => {
     if (!isReady || !zones.length || initialMoveRef.current) return
     const center = polygonCenter(zones[0].polygon)
     if (center) {
-      moveToCenter(center.lat, center.lng, 3)  // 50m 축척
+      moveToCenter(center.lat, center.lng, 1)
       initialMoveRef.current = true
     }
   }, [isReady, zones, moveToCenter])

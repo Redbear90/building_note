@@ -60,7 +60,7 @@ export const useMapStore = create<MapState>((set) => ({
   snapPoint: 'hidden',
   isMapReady: false,
   center: { lat: 37.5665, lng: 126.9780 },  // 서울 중심 기본값
-  zoomLevel: 4,
+  zoomLevel: 1,
   startDrawingZone: null,
   stopDrawingZone: null,
   moveToCenter: null,

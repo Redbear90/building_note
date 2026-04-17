@@ -53,7 +53,7 @@ export const BuildingEditModal: React.FC<BuildingEditModalProps> = ({ building, 
     const lng = parseFloat(result.x)
     setForm((p) => ({ ...p, address: result.address_name, lat: lat.toFixed(6), lng: lng.toFixed(6) }))
     setAddressResults([])
-    moveToCenter?.(lat, lng, 3)
+    moveToCenter?.(lat, lng, 1)
     showTempMarker?.(lat, lng)
   }
 
