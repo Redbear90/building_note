@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { MapPin, Building2, Search } from 'lucide-react'
 import { UnitGrid } from './UnitGrid'
 import { BuildingEditModal } from './BuildingEditModal'
@@ -27,6 +27,17 @@ export const BuildingSidePanel: React.FC = () => {
     undefined,
     debouncedSearch || undefined
   )
+
+  // 수정 완료 후 선택된 건물 데이터 갱신
+  const handleEditClose = useCallback(() => {
+    if (selectedBuilding) {
+      const updatedBuilding = buildings.find((b) => b.id === selectedBuilding.id)
+      if (updatedBuilding) {
+        selectBuilding(updatedBuilding)
+      }
+    }
+    setShowEditModal(false)
+  }, [selectedBuilding, buildings, selectBuilding])
 
   return (
     <div className="w-80 h-full bg-white border-r flex flex-col overflow-hidden">
@@ -124,7 +135,7 @@ export const BuildingSidePanel: React.FC = () => {
       {showEditModal && selectedBuilding && (
         <BuildingEditModal
           building={selectedBuilding}
-          onClose={() => setShowEditModal(false)}
+          onClose={handleEditClose}
         />
       )}
     </div>

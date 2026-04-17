@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { MapPin, X, Search, ChevronRight } from 'lucide-react'
 import { BottomSheet } from '@/components/common/BottomSheet'
 import { UnitGrid } from './UnitGrid'
@@ -36,6 +36,17 @@ export const BuildingBottomSheet: React.FC = () => {
     selectBuilding(building)
     setSearchQuery('')
   }
+
+  // 수정 완료 후 선택된 건물 데이터 갱신
+  const handleEditClose = useCallback(() => {
+    if (selectedBuilding) {
+      const updatedBuilding = buildings.find((b) => b.id === selectedBuilding.id)
+      if (updatedBuilding) {
+        selectBuilding(updatedBuilding)
+      }
+    }
+    setEditingBuilding(null)
+  }, [selectedBuilding, buildings, selectBuilding])
 
   return (
     <>
@@ -128,7 +139,7 @@ export const BuildingBottomSheet: React.FC = () => {
       {editingBuilding && (
         <BuildingEditModal
           building={editingBuilding}
-          onClose={() => setEditingBuilding(null)}
+          onClose={handleEditClose}
         />
       )}
     </>
