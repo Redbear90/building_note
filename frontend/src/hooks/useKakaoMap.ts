@@ -53,6 +53,7 @@ export const useKakaoMap = (
   const isDrawingRef = useRef(false)
   const drawingPointsRef = useRef<[number, number][]>([])
   const drawingPolylineRef = useRef<KakaoPolyline | null>(null)
+  const drawingMarkersRef = useRef<unknown[]>([])
   const clickListenerRef = useRef<unknown>(null)
 
   /** 지도 초기화 */
@@ -173,8 +174,9 @@ export const useKakaoMap = (
         map,
       })
 
-      // 폴리곤 클릭 시 해당 구역 중심으로 이동 (현재 레벨 유지)
+      // 폴리곤 클릭 시 해당 구역 중심으로 이동 (구역 그리기 중엔 이동 안 함)
       const clickListener = () => {
+        if (isDrawingRef.current) return
         const center = polygonCenter(zone.polygon)
         if (center) {
           map.setCenter(new kakao.LatLng(center.lat, center.lng))
@@ -205,6 +207,7 @@ export const useKakaoMap = (
 
     isDrawingRef.current = true
     drawingPointsRef.current = []
+    if (mapRef.current) mapRef.current.style.cursor = 'crosshair'
 
     const kakao = window.kakao.maps
 
@@ -216,6 +219,17 @@ export const useKakaoMap = (
       const latlng = mouseEvent.latLng as KakaoLatLng
       const point: [number, number] = [latlng.getLat(), latlng.getLng()]
       drawingPointsRef.current.push(point)
+
+      // 클릭 지점 시각적 마커 (작은 원형 점)
+      const dot = document.createElement('div')
+      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#01696f;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.4);margin:-4px 0 0 -4px;'
+      const overlay = new kakao.CustomOverlay({
+        position: new kakao.LatLng(latlng.getLat(), latlng.getLng()),
+        content: dot,
+        map,
+        yAnchor: 0,
+      })
+      drawingMarkersRef.current.push(overlay)
 
       // 임시 폴리라인 그리기
       if (drawingPolylineRef.current) {
@@ -236,13 +250,14 @@ export const useKakaoMap = (
 
     clickListenerRef.current = clickListener
     kakao.event.addListener(map, 'click', clickListener)
-  }, [map])
+  }, [map, mapRef])
 
   /** 구역 그리기 종료 - 완성된 좌표 반환 */
   const stopDrawingZone = useCallback((): [number, number][] => {
     if (!map || !window.kakao) return []
 
     isDrawingRef.current = false
+    if (mapRef.current) mapRef.current.style.cursor = ''
     const kakao = window.kakao.maps
 
     // 클릭 이벤트 제거
@@ -257,10 +272,17 @@ export const useKakaoMap = (
       drawingPolylineRef.current = null
     }
 
+    // 클릭 지점 마커 제거
+    drawingMarkersRef.current.forEach((overlay) => {
+      // @ts-expect-error: Kakao SDK 동적 메서드
+      overlay.setMap(null)
+    })
+    drawingMarkersRef.current = []
+
     const points = [...drawingPointsRef.current]
     drawingPointsRef.current = []
     return points
-  }, [map])
+  }, [map, mapRef])
 
   /** 지도 중심을 건물 위치로 이동 */
   const moveToBuilding = useCallback(

@@ -20,7 +20,7 @@ const DEFAULT_WIDTH = 384  // max-w-sm = 24rem = 384px
  * 좌측 엣지를 드래그하여 너비 조정 가능
  */
 const AdminPanel: React.FC = () => {
-  const { isPanelOpen, setPanel, activeTab, setActiveTab } = useAdminStore()
+  const { isPanelOpen, setPanel, activeTab, setActiveTab, isDrawingZone } = useAdminStore()
   const [editingBuilding, setEditingBuilding] = React.useState<Building | null>(null)
   const { startDrawingZone, stopDrawingZone, isPickingLocation } = useMapStore()
 
@@ -70,8 +70,8 @@ const AdminPanel: React.FC = () => {
 
   return (
     <>
-      {/* 배경 오버레이 (모바일) */}
-      {!isPickingLocation && (
+      {/* 배경 오버레이 (모바일) — 위치 선택/구역 그리기 중엔 숨김 */}
+      {!isPickingLocation && !isDrawingZone && (
         <div
           className="fixed inset-0 z-40 bg-black/30 lg:hidden"
           onClick={() => setPanel(false)}
