@@ -39,6 +39,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Flyway DB 마이그레이션
+    // Spring Boot 3.2.x BOM이 가져오는 Flyway 9.x는 flyway-core 한 모듈로 PostgreSQL을 지원한다.
+    // (Flyway 10+에서는 flyway-database-postgresql이 분리되지만, 우리 BOM은 9.x임)
+    implementation 'org.flywaydb:flyway-core'
 
     // PostgreSQL 드라이버
     runtimeOnly 'org.postgresql:postgresql'

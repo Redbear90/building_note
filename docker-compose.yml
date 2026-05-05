@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: building-note-db
+    environment:
+      POSTGRES_DB: building_note
+      POSTGRES_USER: buildnote
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-buildnote}
+    ports:
+      - "5432:5432"
+    volumes:
+      # 기존 볼륨(building_note_postgres_data)을 그대로 사용 — 데이터 보존
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buildnote -d building_note"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: building-note-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILE: local
+      DB_URL: jdbc:postgresql://postgres:5432/building_note
+      DB_USERNAME: buildnote
+      DB_PASSWORD: ${DB_PASSWORD:-buildnote}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required (>= 32 bytes)}
+      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8080/api/v1
+        VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY:?VITE_KAKAO_MAP_KEY is required}
+    container_name: building-note-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  # 이름은 compose 프로젝트(building_note) prefix가 붙어 building_note_postgres_data가 된다.
+  # 컨테이너 삭제 시점에도 데이터가 보존된 기존 볼륨과 매칭된다.
+  postgres_data:
