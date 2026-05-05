@@ -5,16 +5,14 @@ import com.buildingnote.unit.entity.Unit;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * 호실 응답 DTO
- */
 public record UnitResponse(
         UUID id,
         String name,
         Integer floor,
         Integer sortOrder,
+        boolean isActive,
         UUID buildingId,
-        LocalDateTime lastCommentAt,  // 최신 댓글 작성 시각 (NEW 배지용)
+        LocalDateTime lastCommentAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -28,6 +26,7 @@ public record UnitResponse(
                 unit.getName(),
                 unit.getFloor(),
                 unit.getSortOrder(),
+                Boolean.TRUE.equals(unit.getIsActive()),
                 unit.getBuilding().getId(),
                 lastCommentAt,
                 unit.getCreatedAt(),

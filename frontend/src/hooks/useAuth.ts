@@ -1,40 +1,81 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
+import type { UserInfo } from '@/types'
 import type { AxiosError } from 'axios'
 
-/** 인증 관련 훅 */
+export const homeForRole = (role: UserInfo['role']) => {
+  switch (role) {
+    case 'ADMIN':
+    case 'BUILDING_OWNER':
+      return '/admin'
+    case 'MEMBER':
+    default:
+      return '/'
+  }
+}
+
+const messageOf = (e: unknown, fallback: string) => {
+  const ax = e as AxiosError<{ message?: string }>
+  return ax?.response?.data?.message || ax?.message || fallback
+}
+
 export const useAuth = () => {
-  const { user, isAdmin, isLoading, login, logout, accessToken } = useAuthStore()
+  const { user, accessToken, login, signupOwner, signupMember, logout } = useAuthStore()
   const navigate = useNavigate()
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
       try {
-        await login(email, password)
-        navigate('/admin')
-      } catch (error) {
-        const axiosError = error as AxiosError<{ message: string }>
-        const msg = axiosError.response?.data?.message
-          || axiosError.message
-          || '로그인에 실패했습니다.'
-        throw new Error(msg)
+        const u = await login(email, password)
+        navigate(homeForRole(u.role))
+      } catch (e) {
+        throw new Error(messageOf(e, '로그인에 실패했습니다.'))
       }
     },
     [login, navigate]
   )
 
+  const handleSignupOwner = useCallback(
+    async (payload: { workspaceName: string; email: string; password: string; name: string }) => {
+      try {
+        const u = await signupOwner(payload)
+        navigate(homeForRole(u.role))
+      } catch (e) {
+        throw new Error(messageOf(e, '워크스페이스 생성에 실패했습니다.'))
+      }
+    },
+    [signupOwner, navigate]
+  )
+
+  const handleSignupMember = useCallback(
+    async (payload: { inviteCode: string; email: string; password: string; name: string }) => {
+      try {
+        const u = await signupMember(payload)
+        navigate(homeForRole(u.role))
+      } catch (e) {
+        throw new Error(messageOf(e, '가입에 실패했습니다.'))
+      }
+    },
+    [signupMember, navigate]
+  )
+
   const handleLogout = useCallback(() => {
     logout()
-    navigate('/')
+    navigate('/login')
   }, [logout, navigate])
 
   return {
     user,
-    isAdmin,
-    isLoading,
-    isAuthenticated: !!accessToken,
+    role: user?.role,
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'ADMIN',
+    isBuildingOwner: user?.role === 'BUILDING_OWNER',
+    isMember: user?.role === 'MEMBER',
+    accessToken,
     login: handleLogin,
+    signupOwner: handleSignupOwner,
+    signupMember: handleSignupMember,
     logout: handleLogout,
   }
 }

@@ -6,6 +6,7 @@ import com.buildingnote.building.entity.Building;
 import com.buildingnote.building.repository.BuildingRepository;
 import com.buildingnote.common.exception.BusinessException;
 import com.buildingnote.common.exception.ErrorCode;
+import com.buildingnote.common.security.SecurityUtils;
 import com.buildingnote.user.entity.User;
 import com.buildingnote.zone.entity.Zone;
 import com.buildingnote.zone.repository.ZoneRepository;
@@ -16,9 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 건물 서비스
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,38 +26,38 @@ public class BuildingService {
     private final ZoneRepository zoneRepository;
 
     /**
-     * 건물 목록 조회 (zoneId 필터 + 건물명/주소 검색 선택)
+     * 현재 사용자 organization의 건물만 조회.
+     * (ADMIN은 organization이 없으므로 별도 엔드포인트로 처리하거나 추후 확장.)
      */
     public List<BuildingResponse> getBuildings(UUID zoneId, String search) {
+        UUID orgId = requireOrgId();
         String keyword = (search != null && !search.isBlank()) ? search.trim() : null;
+
         List<Building> buildings;
         if (keyword != null && zoneId != null) {
-            buildings = buildingRepository.findByZoneIdAndKeyword(zoneId, keyword);
+            buildings = buildingRepository.findByZoneIdAndKeywordInOrg(orgId, zoneId, keyword);
         } else if (keyword != null) {
-            buildings = buildingRepository.findByKeyword(keyword);
+            buildings = buildingRepository.findByKeywordInOrg(orgId, keyword);
         } else if (zoneId != null) {
-            buildings = buildingRepository.findByZoneIdWithZone(zoneId);
+            buildings = buildingRepository.findByZoneIdInOrg(orgId, zoneId);
         } else {
-            buildings = buildingRepository.findAllWithZone();
+            buildings = buildingRepository.findAllInOrg(orgId);
         }
         return buildings.stream().map(BuildingResponse::from).toList();
     }
 
-    /**
-     * 건물 상세 조회
-     */
     public BuildingResponse getBuilding(UUID buildingId) {
-        Building building = buildingRepository.findById(buildingId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BUILDING_NOT_FOUND));
+        Building building = loadOwnedBuilding(buildingId);
         return BuildingResponse.from(building);
     }
 
-    /**
-     * 건물 생성 (ADMIN 전용)
-     */
     @Transactional
-    public BuildingResponse createBuilding(BuildingRequest request, User currentUser) {
-        Zone zone = resolveZone(request.zoneId());
+    public BuildingResponse createBuilding(BuildingRequest request) {
+        User me = SecurityUtils.currentUser();
+        if (me.getOrganization() == null) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+        Zone zone = resolveZone(request.zoneId(), me.getOrganization().getId());
 
         Building building = Building.builder()
                 .name(request.name())
@@ -67,42 +65,47 @@ public class BuildingService {
                 .lat(request.lat())
                 .lng(request.lng())
                 .zone(zone)
-                .createdBy(currentUser)
+                .organization(me.getOrganization())
+                .createdBy(me)
                 .build();
 
         return BuildingResponse.from(buildingRepository.save(building));
     }
 
-    /**
-     * 건물 수정 (ADMIN 전용)
-     */
     @Transactional
     public BuildingResponse updateBuilding(UUID buildingId, BuildingRequest request) {
-        Building building = buildingRepository.findById(buildingId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BUILDING_NOT_FOUND));
-
-        Zone zone = resolveZone(request.zoneId());
+        Building building = loadOwnedBuilding(buildingId);
+        Zone zone = resolveZone(request.zoneId(), building.getOrganizationId());
         building.update(request.name(), request.address(), request.lat(), request.lng(), zone);
-
         return BuildingResponse.from(building);
     }
 
-    /**
-     * 건물 삭제 (ADMIN 전용)
-     */
     @Transactional
     public void deleteBuilding(UUID buildingId) {
-        Building building = buildingRepository.findById(buildingId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BUILDING_NOT_FOUND));
+        Building building = loadOwnedBuilding(buildingId);
         buildingRepository.delete(building);
     }
 
-    /**
-     * zoneId가 있으면 Zone 엔티티 조회, 없으면 null 반환
-     */
-    private Zone resolveZone(UUID zoneId) {
+    private Building loadOwnedBuilding(UUID buildingId) {
+        Building building = buildingRepository.findById(buildingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BUILDING_NOT_FOUND));
+        SecurityUtils.assertOrgAccess(building.getOrganizationId());
+        return building;
+    }
+
+    private Zone resolveZone(UUID zoneId, UUID expectedOrgId) {
         if (zoneId == null) return null;
-        return zoneRepository.findById(zoneId)
+        Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ZONE_NOT_FOUND));
+        if (!zone.getOrganization().getId().equals(expectedOrgId)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+        return zone;
+    }
+
+    private UUID requireOrgId() {
+        UUID orgId = SecurityUtils.currentOrgId();
+        if (orgId == null) throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        return orgId;
     }
 }

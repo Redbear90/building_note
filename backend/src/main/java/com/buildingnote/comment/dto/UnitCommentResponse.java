@@ -8,7 +8,8 @@ import java.util.UUID;
 public record UnitCommentResponse(
         UUID id,
         UUID unitId,
-        String author,
+        UUID authorId,
+        String authorName,
         String content,
         LocalDateTime createdAt
 ) {
@@ -16,7 +17,8 @@ public record UnitCommentResponse(
         return new UnitCommentResponse(
                 comment.getId(),
                 comment.getUnit().getId(),
-                comment.getAuthor(),
+                comment.getAuthor().getId(),
+                comment.getAuthor().getName(),
                 comment.getContent(),
                 comment.getCreatedAt()
         );

@@ -2,6 +2,7 @@ package com.buildingnote.zone.service;
 
 import com.buildingnote.common.exception.BusinessException;
 import com.buildingnote.common.exception.ErrorCode;
+import com.buildingnote.common.security.SecurityUtils;
 import com.buildingnote.user.entity.User;
 import com.buildingnote.zone.dto.ZoneRequest;
 import com.buildingnote.zone.dto.ZoneResponse;
@@ -14,9 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 구역 서비스
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,51 +22,53 @@ public class ZoneService {
 
     private final ZoneRepository zoneRepository;
 
-    /**
-     * 전체 구역 목록 조회
-     */
     public List<ZoneResponse> getAllZones() {
-        return zoneRepository.findAll().stream()
+        UUID orgId = requireOrgId();
+        return zoneRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId).stream()
                 .map(ZoneResponse::from)
                 .toList();
     }
 
-    /**
-     * 구역 생성 (ADMIN 전용)
-     */
     @Transactional
-    public ZoneResponse createZone(ZoneRequest request, User currentUser) {
+    public ZoneResponse createZone(ZoneRequest request) {
+        User me = SecurityUtils.currentUser();
+        if (me.getOrganization() == null) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
         Zone zone = Zone.builder()
                 .name(request.name())
                 .polygon(request.polygon())
                 .color(request.color() != null ? request.color() : "#01696f")
-                .createdBy(currentUser)
+                .organization(me.getOrganization())
+                .createdBy(me)
                 .build();
-
         return ZoneResponse.from(zoneRepository.save(zone));
     }
 
-    /**
-     * 구역 수정 (ADMIN 전용)
-     */
     @Transactional
     public ZoneResponse updateZone(UUID zoneId, ZoneRequest request) {
-        Zone zone = zoneRepository.findById(zoneId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ZONE_NOT_FOUND));
-
+        Zone zone = loadOwnedZone(zoneId);
         zone.update(request.name(), request.polygon(),
                 request.color() != null ? request.color() : zone.getColor());
-
         return ZoneResponse.from(zone);
     }
 
-    /**
-     * 구역 삭제 (ADMIN 전용)
-     */
     @Transactional
     public void deleteZone(UUID zoneId) {
+        Zone zone = loadOwnedZone(zoneId);
+        zoneRepository.delete(zone);
+    }
+
+    private Zone loadOwnedZone(UUID zoneId) {
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ZONE_NOT_FOUND));
-        zoneRepository.delete(zone);
+        SecurityUtils.assertOrgAccess(zone.getOrganizationId());
+        return zone;
+    }
+
+    private UUID requireOrgId() {
+        UUID orgId = SecurityUtils.currentOrgId();
+        if (orgId == null) throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        return orgId;
     }
 }

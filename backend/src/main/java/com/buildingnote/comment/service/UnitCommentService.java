@@ -6,8 +6,10 @@ import com.buildingnote.comment.entity.UnitComment;
 import com.buildingnote.comment.repository.UnitCommentRepository;
 import com.buildingnote.common.exception.BusinessException;
 import com.buildingnote.common.exception.ErrorCode;
+import com.buildingnote.common.security.SecurityUtils;
 import com.buildingnote.unit.entity.Unit;
 import com.buildingnote.unit.repository.UnitRepository;
+import com.buildingnote.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,38 +25,53 @@ public class UnitCommentService {
     private final UnitCommentRepository commentRepository;
     private final UnitRepository unitRepository;
 
-    /** 호실 댓글 목록 조회 (최신순) */
     public List<UnitCommentResponse> getComments(UUID unitId) {
-        if (!unitRepository.existsById(unitId)) {
-            throw new BusinessException(ErrorCode.UNIT_NOT_FOUND);
-        }
-        return commentRepository.findByUnitIdOrderByCreatedAtDesc(unitId)
-                .stream()
+        Unit unit = loadOwnedUnit(unitId);
+        return commentRepository.findActiveByUnitId(unit.getId()).stream()
                 .map(UnitCommentResponse::from)
                 .toList();
     }
 
-    /** 댓글 작성 */
     @Transactional
     public UnitCommentResponse addComment(UUID unitId, UnitCommentRequest request) {
-        Unit unit = unitRepository.findById(unitId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.UNIT_NOT_FOUND));
+        Unit unit = loadOwnedUnit(unitId);
+        User me = SecurityUtils.currentUser();
 
         UnitComment comment = UnitComment.builder()
                 .unit(unit)
-                .author(request.author())
+                .author(me)
                 .content(request.content())
                 .build();
-
         return UnitCommentResponse.from(commentRepository.save(comment));
     }
 
-    /** 댓글 삭제 (관리자만) */
+    /** Soft delete. 본인 또는 같은 org의 BUILDING_OWNER, 또는 ADMIN. */
     @Transactional
-    public void deleteComment(UUID commentId) {
-        if (!commentRepository.existsById(commentId)) {
-            throw new BusinessException(ErrorCode.COMMENT_NOT_FOUND);
+    public void softDeleteComment(UUID commentId) {
+        UnitComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_NOT_FOUND));
+
+        if (comment.isDeleted()) return;
+
+        User me = SecurityUtils.currentUser();
+        Unit unit = comment.getUnit();
+        SecurityUtils.assertOrgAccess(unit.getOrganizationId());
+
+        boolean isAuthor = comment.getAuthor().getId().equals(me.getId());
+        boolean isOwnerOfOrg = me.isBuildingOwner()
+                && me.getOrganizationId() != null
+                && me.getOrganizationId().equals(unit.getOrganizationId());
+
+        if (!isAuthor && !isOwnerOfOrg && !me.isAdmin()) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        commentRepository.deleteById(commentId);
+        comment.softDelete(me);
+    }
+
+    private Unit loadOwnedUnit(UUID unitId) {
+        Unit unit = unitRepository.findById(unitId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNIT_NOT_FOUND));
+        SecurityUtils.assertOrgAccess(unit.getOrganizationId());
+        return unit;
     }
 }

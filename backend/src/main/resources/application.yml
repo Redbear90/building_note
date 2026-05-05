@@ -2,7 +2,6 @@ spring:
   application:
     name: building-note
 
-  # 활성 프로파일 (개발 시 local로 변경)
   profiles:
     active: ${SPRING_PROFILE:local}
 
@@ -12,34 +11,48 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10
+      maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000
+      leak-detection-threshold: 60000
 
   jpa:
     hibernate:
-      ddl-auto: update          # 스키마 자동 동기화
+      ddl-auto: none              # Flyway가 스키마를 관리. JPA는 자동 변경하지 않음.
     show-sql: false
-    open-in-view: false         # OSIV 비활성화 (성능 이슈 방지)
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        default_batch_fetch_size: 100
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
 
-  # 쿠키 기반 리프레시 토큰 설정
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true     # 기존 DB에도 baseline 자동 기록
+    baseline-version: 0
+    validate-on-migrate: true
+
   servlet:
     session:
       cookie:
-        same-site: lax
+        same-site: strict
 
-# JWT 설정
+# JWT 설정 — 비밀키는 반드시 환경변수로
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 3600000      # 1시간 (ms)
-  refresh-token-expiration: 2592000000  # 30일 (ms)
+  access-token-expiration: 3600000        # 1h
+  refresh-token-expiration: 2592000000    # 30d
 
-# Swagger / OpenAPI 설정
+# CORS 허용 오리진 (콤마 구분)
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:4173}
+
+# Swagger
 springdoc:
   api-docs:
     path: /api-docs
@@ -47,10 +60,17 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
-  default-consumes-media-type: application/json
-  default-produces-media-type: application/json
 
-# 로깅
+# Actuator — 운영에서 헬스체크만 노출
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 logging:
   level:
     com.buildingnote: INFO

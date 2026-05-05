@@ -6,12 +6,11 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * 호실 기록 응답 DTO
- */
 public record UnitRecordResponse(
         UUID id,
         UUID unitId,
+        UUID authorId,
+        String authorName,
         Map<String, Object> data,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -20,6 +19,8 @@ public record UnitRecordResponse(
         return new UnitRecordResponse(
                 record.getId(),
                 record.getUnit().getId(),
+                record.getAuthor().getId(),
+                record.getAuthor().getName(),
                 record.getData(),
                 record.getCreatedAt(),
                 record.getUpdatedAt()

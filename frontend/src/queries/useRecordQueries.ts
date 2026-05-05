@@ -1,35 +1,54 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { recordApi } from '@/api/recordApi'
+import { unitKeys } from './useUnitQueries'
 
 export const recordKeys = {
   all: ['records'] as const,
-  byUnit: (unitId: string) => [...recordKeys.all, 'unit', unitId] as const,
+  mineByUnit: (unitId: string) => [...recordKeys.all, 'mine', unitId] as const,
+  allByUnit: (unitId: string) => [...recordKeys.all, 'all', unitId] as const,
 }
 
-/** 호실 기록 조회 */
-export const useUnitRecord = (unitId: string | null) => {
+/** 내 호실 기록 */
+export const useMyUnitRecord = (unitId: string | null) => {
   return useQuery({
-    queryKey: recordKeys.byUnit(unitId!),
-    queryFn: () => recordApi.getByUnit(unitId!),
+    queryKey: recordKeys.mineByUnit(unitId!),
+    queryFn: () => recordApi.getMine(unitId!),
     enabled: !!unitId,
-    // staleTime 기본값 0 — 저장 후 즉시 재조회
   })
 }
 
-/** 호실 기록 저장 */
-export const useSaveRecord = () => {
+/** 호실 내 모든 멤버 기록 (BUILDING_OWNER) */
+export const useAllUnitRecords = (unitId: string | null) => {
+  return useQuery({
+    queryKey: recordKeys.allByUnit(unitId!),
+    queryFn: () => recordApi.getAll(unitId!),
+    enabled: !!unitId,
+  })
+}
+
+/** 내 기록 저장 */
+export const useSaveMyRecord = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      unitId,
-      data,
-    }: {
-      unitId: string
-      data: Record<string, string | string[]>
-    }) => recordApi.save(unitId, data),
-    onSuccess: (savedRecord, variables) => {
-      // 즉시 캐시 업데이트 → UnitCard 색상 즉시 반영
-      queryClient.setQueryData(recordKeys.byUnit(variables.unitId), savedRecord)
+    mutationFn: ({ unitId, data }: { unitId: string; data: Record<string, string | string[]> }) =>
+      recordApi.saveMine(unitId, data),
+    onSuccess: (saved, variables) => {
+      queryClient.setQueryData(recordKeys.mineByUnit(variables.unitId), saved)
+      queryClient.invalidateQueries({ queryKey: recordKeys.allByUnit(variables.unitId) })
+      queryClient.invalidateQueries({ queryKey: unitKeys.all })
+    },
+  })
+}
+
+/** 기록 soft delete */
+export const useDeleteRecord = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ recordId }: { recordId: string; unitId: string }) =>
+      recordApi.delete(recordId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: recordKeys.mineByUnit(variables.unitId) })
+      queryClient.invalidateQueries({ queryKey: recordKeys.allByUnit(variables.unitId) })
     },
   })
 }

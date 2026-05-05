@@ -9,28 +9,23 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 호실 JPA 리포지터리
+ * Unit.building은 ManyToOne 관계 필드라 메서드 이름 파싱(buildingId 단축)으로는
+ * Hibernate 6에서 인식되지 않는다. 모든 building.id 접근은 @Query로 명시.
  */
 public interface UnitRepository extends JpaRepository<Unit, UUID> {
 
-    /**
-     * 건물 ID로 호실 목록 조회 (정렬 순서 오름차순)
-     */
-    List<Unit> findByBuildingIdOrderBySortOrderAsc(UUID buildingId);
+    @Query("SELECT u FROM Unit u WHERE u.building.id = :buildingId ORDER BY u.sortOrder ASC")
+    List<Unit> findByBuildingIdOrderBySortOrderAsc(@Param("buildingId") UUID buildingId);
 
-    /**
-     * 여러 건물 ID로 호실 목록 일괄 조회 (엑셀 내보내기 N+1 방지)
-     */
     @Query("SELECT u FROM Unit u WHERE u.building.id IN :buildingIds ORDER BY u.building.id, u.sortOrder ASC")
     List<Unit> findByBuildingIdInOrderBySortOrderAsc(@Param("buildingIds") List<UUID> buildingIds);
 
-    /**
-     * 건물 내 최대 정렬 순서 조회 (새 호실 추가 시 사용)
-     */
-    int countByBuildingId(UUID buildingId);
+    @Query("SELECT COUNT(u) FROM Unit u WHERE u.building.id = :buildingId")
+    int countByBuildingId(@Param("buildingId") UUID buildingId);
 
-    /**
-     * 전체 호실 수 조회
-     */
-    long count();
+    @Query("SELECT COUNT(u) FROM Unit u WHERE u.building.organization.id = :orgId")
+    long countByOrganizationId(@Param("orgId") UUID orgId);
+
+    @Query("SELECT COUNT(u) FROM Unit u WHERE u.building.organization.id = :orgId AND u.isActive = true")
+    long countActiveByOrganizationId(@Param("orgId") UUID orgId);
 }

@@ -1,71 +1,55 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '@/api/authApi'
-import type { UserInfo } from '@/types'
+import type { TokenResponse, UserInfo } from '@/types'
 
-/** 인증 스토어 상태 타입 */
 interface AuthState {
-  /** 액세스 토큰 (메모리에만 보관 - XSS 방어) */
   accessToken: string | null
-  /** 로그인된 사용자 정보 */
   user: UserInfo | null
-  /** 관리자 여부 */
-  isAdmin: boolean
-  /** 로그인 처리 중 여부 */
-  isLoading: boolean
 
-  /** 액세스 토큰 설정 (토큰 갱신 시 사용) */
+  setAuth: (token: string, user: UserInfo) => void
   setAccessToken: (token: string) => void
-  /** 로그인 */
-  login: (email: string, password: string) => Promise<void>
-  /** 로그아웃 */
+  login: (email: string, password: string) => Promise<UserInfo>
+  signupOwner: (payload: { workspaceName: string; email: string; password: string; name: string }) => Promise<UserInfo>
+  signupMember: (payload: { inviteCode: string; email: string; password: string; name: string }) => Promise<UserInfo>
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
-  // 사용자 정보는 persist (sessionStorage), 토큰은 메모리에만 유지
   persist(
     (set) => ({
       accessToken: null,
       user: null,
-      isAdmin: false,
-      isLoading: false,
 
-      setAccessToken: (token: string) => set({ accessToken: token }),
+      setAuth: (token, user) => set({ accessToken: token, user }),
+      setAccessToken: (token) => set({ accessToken: token }),
 
-      login: async (email: string, password: string) => {
-        set({ isLoading: true })
-        try {
-          const response = await authApi.login(email, password)
-          set({
-            accessToken: response.accessToken,
-            user: response.user,
-            isAdmin: response.user.role === 'ADMIN',
-            isLoading: false,
-          })
-        } catch (error) {
-          set({ isLoading: false })
-          throw error
-        }
+      login: async (email, password) => {
+        const res: TokenResponse = await authApi.login(email, password)
+        set({ accessToken: res.accessToken, user: res.user })
+        return res.user
+      },
+
+      signupOwner: async (payload) => {
+        const res = await authApi.signupOwner(payload)
+        set({ accessToken: res.accessToken, user: res.user })
+        return res.user
+      },
+
+      signupMember: async (payload) => {
+        const res = await authApi.signupMember(payload)
+        set({ accessToken: res.accessToken, user: res.user })
+        return res.user
       },
 
       logout: () => {
-        // 서버에 로그아웃 요청 (리프레시 토큰 쿠키 삭제)
-        authApi.logout().catch((error) => {
-          console.warn('로그아웃 요청 실패:', error)
-          // 클라이언트 상태는 여전히 초기화 (서버 오류와 무관하게)
-        })
-        set({
-          accessToken: null,
-          user: null,
-          isAdmin: false,
-        })
+        authApi.logout().catch(() => undefined)
+        set({ accessToken: null, user: null })
       },
     }),
     {
       name: 'building-note-auth',
       storage: {
-        // sessionStorage 사용 (탭 닫으면 자동 삭제)
         getItem: (name) => {
           const item = sessionStorage.getItem(name)
           return item ? JSON.parse(item) : null
@@ -73,8 +57,14 @@ export const useAuthStore = create<AuthState>()(
         setItem: (name, value) => sessionStorage.setItem(name, JSON.stringify(value)),
         removeItem: (name) => sessionStorage.removeItem(name),
       },
-      // 토큰은 persist에서 제외 (메모리에만 유지)
-      partialize: (state): Partial<AuthState> => ({ user: state.user, isAdmin: state.isAdmin }),
+      // accessToken은 메모리만 유지, user 정보는 sessionStorage에 보관 (새로고침 시 refresh로 복구)
+      partialize: (state) => ({ user: state.user }) as unknown as AuthState,
     }
   )
 )
+
+/** 역할 헬퍼 */
+export const useIsAdmin = () => useAuthStore((s) => s.user?.role === 'ADMIN')
+export const useIsBuildingOwner = () => useAuthStore((s) => s.user?.role === 'BUILDING_OWNER')
+export const useIsMember = () => useAuthStore((s) => s.user?.role === 'MEMBER')
+export const useIsAuthenticated = () => useAuthStore((s) => !!s.user)

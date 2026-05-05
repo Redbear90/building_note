@@ -5,7 +5,6 @@ import com.buildingnote.formschema.dto.FormSchemaRequest;
 import com.buildingnote.formschema.dto.FormSchemaResponse;
 import com.buildingnote.formschema.service.FormSchemaService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,11 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-/**
- * 폼 스키마 컨트롤러
- * GET: 공개, PUT: ADMIN 전용
- */
-@Tag(name = "폼 스키마", description = "건물별 커스텀 폼 필드 정의 API")
+@Tag(name = "폼 스키마", description = "건물별 커스텀 폼 필드 정의")
 @RestController
 @RequestMapping("/api/v1/buildings/{buildingId}/form-schema")
 @RequiredArgsConstructor
@@ -29,19 +24,18 @@ public class FormSchemaController {
 
     @Operation(summary = "폼 스키마 조회")
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FormSchemaResponse>> getFormSchema(@PathVariable UUID buildingId) {
         return ResponseEntity.ok(ApiResponse.success(formSchemaService.getFormSchema(buildingId)));
     }
 
-    @Operation(summary = "폼 스키마 저장/전체교체 (ADMIN)", security = @SecurityRequirement(name = "BearerAuth"))
+    @Operation(summary = "폼 스키마 저장 (BUILDING_OWNER)")
     @PutMapping
-    // @PreAuthorize("hasRole('ADMIN')") // [임시 공개] 복구 시 주석 해제
+    @PreAuthorize("hasRole('BUILDING_OWNER')")
     public ResponseEntity<ApiResponse<FormSchemaResponse>> saveFormSchema(
             @PathVariable UUID buildingId,
             @Valid @RequestBody FormSchemaRequest request) {
-
         return ResponseEntity.ok(ApiResponse.success(
-                formSchemaService.saveFormSchema(buildingId, request),
-                "폼 스키마가 저장되었습니다."));
+                formSchemaService.saveFormSchema(buildingId, request), "폼 스키마가 저장되었습니다."));
     }
 }

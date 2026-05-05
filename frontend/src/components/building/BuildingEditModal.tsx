@@ -9,7 +9,7 @@ import type { Building, KakaoAddressSearchResult } from '@/types'
 
 interface BuildingEditModalProps {
   building: Building
-  onClose: () => void
+  onClose: (updated?: Building) => void
 }
 
 /**
@@ -73,7 +73,7 @@ export const BuildingEditModal: React.FC<BuildingEditModalProps> = ({ building, 
   const handleSubmit = async () => {
     if (!form.name.trim()) { alert('건물명을 입력하세요.'); return }
     if (!form.lat || !form.lng) { alert('위치를 선택하세요.'); return }
-    await updateBuilding.mutateAsync({
+    const updated = await updateBuilding.mutateAsync({
       id: building.id,
       name: form.name,
       address: form.address || undefined,
@@ -81,7 +81,7 @@ export const BuildingEditModal: React.FC<BuildingEditModalProps> = ({ building, 
       lng: parseFloat(form.lng),
       zoneId: form.zoneId || undefined,
     })
-    onClose()
+    onClose(updated)
   }
 
   return (
@@ -182,7 +182,7 @@ export const BuildingEditModal: React.FC<BuildingEditModalProps> = ({ building, 
             {updateBuilding.isPending ? '저장 중...' : '저장'}
           </button>
           <button
-            onClick={onClose}
+            onClick={() => onClose()}
             className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200"
           >
             취소

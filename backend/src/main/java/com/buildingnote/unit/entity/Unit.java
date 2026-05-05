@@ -9,8 +9,7 @@ import org.hibernate.annotations.UuidGenerator;
 import java.util.UUID;
 
 /**
- * 호실 엔티티
- * 건물 내 개별 호실/공간
+ * 호실. is_active는 멤버 누구나 토글하는 슬라이드 버튼 상태.
  */
 @Entity
 @Table(name = "units")
@@ -25,26 +24,24 @@ public class Unit extends BaseEntity {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    /** 호실 명칭 (예: 101호, B-201, 지하1층) */
     @Column(nullable = false, length = 100)
     private String name;
 
-    /** 층 정보 (선택) */
     @Column
     private Integer floor;
 
-    /** 정렬 순서 (낮을수록 앞에 표시) */
-    @Column(nullable = false)
+    @Column(name = "sort_order", nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = false;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "building_id", nullable = false)
     private Building building;
 
-    /**
-     * 호실 정보 수정
-     */
     public void update(String name, Integer floor, Integer sortOrder) {
         this.name = name;
         this.floor = floor;
@@ -53,10 +50,19 @@ public class Unit extends BaseEntity {
         }
     }
 
-    /**
-     * 정렬 순서만 변경
-     */
     public void updateSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public void setActive(boolean active) {
+        this.isActive = active;
+    }
+
+    public UUID getBuildingId() {
+        return building.getId();
+    }
+
+    public UUID getOrganizationId() {
+        return building.getOrganizationId();
     }
 }

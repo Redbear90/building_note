@@ -1,20 +1,16 @@
-# 로컬 개발 환경 전용 설정
+# 로컬 개발 전용. 시크릿/DB 자격증명은 환경변수 또는 .env에서 주입.
+# 스키마는 Flyway가 자동 적용.
 spring:
-  datasource:
-    url: jdbc:postgresql://ep-ancient-unit-a1ih87kh-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
-    username: neondb_owner
-    password: npg_d6rfESicHp5C
-
   jpa:
-    hibernate:
-      ddl-auto: update    # 로컬에서는 스키마 자동 업데이트
     show-sql: true
 
-jwt:
-  secret: local-dev-secret-key-min-256bit-long-enough-for-hs256-algorithm
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/building_note}
+    username: ${DB_USERNAME:buildnote}
+    password: ${DB_PASSWORD:buildnote}
 
 logging:
   level:
     com.buildingnote: DEBUG
     org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+    org.flywaydb: INFO

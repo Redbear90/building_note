@@ -9,7 +9,6 @@ export const unitKeys = {
   byBuilding: (buildingId: string) => [...unitKeys.all, 'building', buildingId] as const,
 }
 
-/** 전체 호실 수 조회 */
 export const useTotalUnitCount = () => {
   return useQuery({
     queryKey: unitKeys.count,
@@ -18,7 +17,6 @@ export const useTotalUnitCount = () => {
   })
 }
 
-/** 호실 통계 조회 (전체/동의/미참여) */
 export const useUnitStats = () => {
   return useQuery({
     queryKey: unitKeys.stats,
@@ -27,7 +25,6 @@ export const useUnitStats = () => {
   })
 }
 
-/** 건물의 호실 목록 조회 */
 export const useUnits = (buildingId: string | null) => {
   return useQuery({
     queryKey: unitKeys.byBuilding(buildingId!),
@@ -37,14 +34,13 @@ export const useUnits = (buildingId: string | null) => {
   })
 }
 
-/** 호실 추가 */
 export const useCreateUnit = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       buildingId,
       ...payload
-    }: { buildingId: string } & Omit<Unit, 'id' | 'buildingId' | 'createdAt' | 'updatedAt'>) =>
+    }: { buildingId: string } & Omit<Unit, 'id' | 'buildingId' | 'isActive' | 'createdAt' | 'updatedAt'>) =>
       unitApi.create(buildingId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: unitKeys.byBuilding(variables.buildingId) })
@@ -52,13 +48,11 @@ export const useCreateUnit = () => {
   })
 }
 
-/** 호실 수정 */
 export const useUpdateUnit = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       unitId,
-      buildingId,
       ...payload
     }: { unitId: string; buildingId: string } & Partial<Unit>) =>
       unitApi.update(unitId, payload as Parameters<typeof unitApi.update>[1]),
@@ -68,19 +62,16 @@ export const useUpdateUnit = () => {
   })
 }
 
-/** 호실 삭제 */
 export const useDeleteUnit = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ unitId }: { unitId: string; buildingId: string }) =>
-      unitApi.delete(unitId),
+    mutationFn: ({ unitId }: { unitId: string; buildingId: string }) => unitApi.delete(unitId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: unitKeys.byBuilding(variables.buildingId) })
     },
   })
 }
 
-/** 호실 순서 변경 */
 export const useReorderUnits = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -88,6 +79,19 @@ export const useReorderUnits = () => {
       unitApi.reorder(buildingId, items),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: unitKeys.byBuilding(variables.buildingId) })
+    },
+  })
+}
+
+/** 슬라이드 버튼 토글 */
+export const useSetUnitActive = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ unitId, active }: { unitId: string; buildingId: string; active: boolean }) =>
+      unitApi.setActive(unitId, active),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: unitKeys.byBuilding(variables.buildingId) })
+      queryClient.invalidateQueries({ queryKey: unitKeys.stats })
     },
   })
 }

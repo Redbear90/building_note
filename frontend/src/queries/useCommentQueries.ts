@@ -7,30 +7,26 @@ export const commentKeys = {
   byUnit: (unitId: string) => [...commentKeys.all, 'unit', unitId] as const,
 }
 
-/** 호실 댓글 목록 조회 */
 export const useUnitComments = (unitId: string) => {
   return useQuery({
     queryKey: commentKeys.byUnit(unitId),
     queryFn: () => commentApi.getByUnit(unitId),
-    staleTime: 1000 * 30,  // 30초
+    staleTime: 1000 * 30,
   })
 }
 
-/** 댓글 작성 */
 export const useAddComment = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ unitId, author, content }: { unitId: string; author: string; content: string }) =>
-      commentApi.add(unitId, author, content),
+    mutationFn: ({ unitId, content }: { unitId: string; content: string }) =>
+      commentApi.add(unitId, content),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: commentKeys.byUnit(variables.unitId) })
-      // 호실 목록의 lastCommentAt 갱신 → NEW 배지 즉시 반영
       queryClient.invalidateQueries({ queryKey: unitKeys.all })
     },
   })
 }
 
-/** 댓글 삭제 */
 export const useDeleteComment = () => {
   const queryClient = useQueryClient()
   return useMutation({

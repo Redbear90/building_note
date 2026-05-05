@@ -5,9 +5,8 @@ import { Skeleton } from '@/components/common/Skeleton'
 import { UnitCommentSection } from './UnitCommentSection'
 import { useDynamicForm } from '@/hooks/useDynamicForm'
 import { useFormSchema } from '@/queries/useFormSchemaQueries'
-import { useUnitRecord, useSaveRecord } from '@/queries/useRecordQueries'
-import { useAuthStore } from '@/stores/authStore'
-import { Lock } from 'lucide-react'
+import { useMyUnitRecord } from '@/queries/useRecordQueries'
+import { useSetUnitActive } from '@/queries/useUnitQueries'
 import { formatFloor } from '@/lib/utils'
 import type { Building, Unit } from '@/types'
 
@@ -17,25 +16,12 @@ interface UnitDetailModalProps {
   onClose: () => void
 }
 
-/**
- * 호실 상세 모달
- * - 폼 스키마 기반 동적 폼 렌더링
- * - 2초 자동저장
- * - 비인증 사용자는 조회만 가능
- */
-export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
-  unit,
-  building,
-  onClose,
-}) => {
-  const accessToken = useAuthStore((s) => s.accessToken)
-  const isAuthenticated = !!accessToken
+export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({ unit, building, onClose }) => {
   const { data: schema, isLoading: schemaLoading } = useFormSchema(building.id)
-  const { data: record, isLoading: recordLoading } = useUnitRecord(unit.id)
-  const saveRecord = useSaveRecord()
+  const { data: record, isLoading: recordLoading } = useMyUnitRecord(unit.id)
+  const setActive = useSetUnitActive()
 
   const fields = schema?.fields ?? []
-
   const { form, handleSave, isSaving } = useDynamicForm({
     unitId: unit.id,
     fields,
@@ -44,34 +30,26 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
   })
 
   const isLoading = schemaLoading || recordLoading
+  const isActive = unit.isActive
 
-  // 활성 토글 상태
-  const isActive = record?.data?.['__active'] === 'true'
-
-  const handleToggleActive = async () => {
-    const currentData = (record?.data ?? {}) as Record<string, string | string[]>
-    await saveRecord.mutateAsync({
-      unitId: unit.id,
-      data: { ...currentData, __active: isActive ? 'false' : 'true' },
-    })
+  const handleToggleActive = () => {
+    setActive.mutate({ unitId: unit.id, buildingId: building.id, active: !isActive })
   }
 
   return (
-    <Modal
-      isOpen
-      onClose={onClose}
-      title={`${building.name} - ${unit.name}`}
-      size="lg"
-    >
-      {/* 활성 토글 바 */}
-      <div className={`flex items-center justify-between px-5 py-3 border-b transition-colors ${isActive ? 'bg-primary-50' : 'bg-gray-50'}`}>
+    <Modal isOpen onClose={onClose} title={`${building.name} - ${unit.name}`} size="lg">
+      <div
+        className={`flex items-center justify-between px-5 py-3 border-b transition-colors ${
+          isActive ? 'bg-primary-50' : 'bg-gray-50'
+        }`}
+      >
         <div>
           <p className="text-sm font-semibold text-gray-800">호실 표시</p>
           <p className="text-xs text-gray-400">켜면 목록에서 강조 표시됩니다</p>
         </div>
         <button
           onClick={handleToggleActive}
-          disabled={/* !isAuthenticated || */ saveRecord.isPending} /* [임시 공개] 복구 시 !isAuthenticated || 주석 해제 */
+          disabled={setActive.isPending}
           className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-40 ${
             isActive ? 'bg-primary-500' : 'bg-gray-300'
           }`}
@@ -86,13 +64,8 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
       </div>
 
       <div className="px-5 py-4 space-y-4">
-        {/* 층 정보 */}
-        {unit.floor != null && (
-          <p className="text-sm text-gray-500">{formatFloor(unit.floor)}</p>
-        )}
+        {unit.floor != null && <p className="text-sm text-gray-500">{formatFloor(unit.floor)}</p>}
 
-
-        {/* 로딩 중 */}
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
@@ -100,19 +73,16 @@ export const UnitDetailModal: React.FC<UnitDetailModalProps> = ({
             ))}
           </div>
         ) : (
-          <fieldset disabled={false}> {/* [임시 공개] 복구 시 disabled={!isAuthenticated} */}
-            <DynamicForm
-              fields={fields}
-              form={form}
-              onSave={handleSave}
-              isSaving={isSaving}
-              autoSave={true} /* [임시 공개] 복구 시 autoSave={isAuthenticated} */
-            />
-          </fieldset>
+          <DynamicForm
+            fields={fields}
+            form={form}
+            onSave={handleSave}
+            isSaving={isSaving}
+            autoSave
+          />
         )}
       </div>
 
-      {/* 메모/댓글 섹션 */}
       <UnitCommentSection unitId={unit.id} />
     </Modal>
   )

@@ -1,17 +1,17 @@
 package com.buildingnote.comment.entity;
 
 import com.buildingnote.unit.entity.Unit;
+import com.buildingnote.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 호실 댓글 엔티티
- * 누구나 읽기 가능, 로그인 사용자만 작성/삭제
+ * 호실 댓글. 작성자 FK, soft delete.
  */
 @Entity
 @Table(name = "unit_comments")
@@ -26,19 +26,34 @@ public class UnitComment {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "unit_id", nullable = false)
     private Unit unit;
 
-    /** 작성자 닉네임 (로그인 사용자 이름 또는 직접 입력) */
-    @Column(nullable = false, length = 50)
-    private String author;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "author_id", nullable = false)
+    private User author;
 
-    /** 댓글 내용 */
     @Column(nullable = false, length = 500)
     private String content;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deleted_by")
+    private User deletedBy;
 
     @CreationTimestamp
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
+
+    public void softDelete(User by) {
+        this.deletedAt = LocalDateTime.now();
+        this.deletedBy = by;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }

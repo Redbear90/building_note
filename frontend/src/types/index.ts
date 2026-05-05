@@ -1,12 +1,31 @@
 // =====================================================
-// BuildingNote 공통 타입 정의
+// BuildingNote 공통 타입
 // =====================================================
+
+export type Role = 'ADMIN' | 'BUILDING_OWNER' | 'MEMBER'
+
+/** 워크스페이스 */
+export interface Organization {
+  id: string
+  name: string
+  inviteCode: string
+  createdAt?: string
+}
+
+/** 워크스페이스 멤버 */
+export interface Member {
+  id: string
+  email: string
+  name?: string
+  role: Role
+  createdAt?: string
+}
 
 /** 구역 (지도 폴리곤) */
 export interface Zone {
   id: string
   name: string
-  polygon: [number, number][]  // [[위도, 경도], ...]
+  polygon: [number, number][]
   color: string
   createdAt?: string
   updatedAt?: string
@@ -31,27 +50,25 @@ export interface Unit {
   name: string
   floor?: number
   sortOrder: number
+  isActive: boolean
   buildingId: string
-  lastCommentAt?: string  // 최신 댓글 시각 (24시간 내면 NEW 배지)
+  lastCommentAt?: string
   createdAt?: string
   updatedAt?: string
 }
 
-/** 폼 필드 타입 */
 export type FieldType = 'text' | 'textarea' | 'checkbox' | 'radio' | 'select' | 'date' | 'number'
 
-/** 폼 필드 정의 */
 export interface FormField {
   id: string
   type: FieldType
   label: string
-  options?: string[]     // checkbox, radio, select 용
+  options?: string[]
   required?: boolean
   sortOrder: number
-  isStatusField?: boolean  // true이면 이 필드의 값이 카드 색상 표시에 사용됨
+  isStatusField?: boolean
 }
 
-/** 건물별 폼 스키마 */
 export interface FormSchema {
   id?: string
   buildingId: string
@@ -59,25 +76,25 @@ export interface FormSchema {
   updatedAt?: string
 }
 
-/** 호실 댓글 */
 export interface UnitComment {
   id: string
   unitId: string
-  author: string
+  authorId: string
+  authorName?: string
   content: string
   createdAt: string
 }
 
-/** 호실 기록 데이터 */
 export interface UnitRecord {
   id?: string
   unitId: string
-  data: Record<string, string | string[]>  // { fieldId: value }
+  authorId?: string
+  authorName?: string
+  data: Record<string, string | string[]>
   createdAt?: string
   updatedAt?: string
 }
 
-/** 공통 API 응답 래퍼 */
 export interface ApiResponse<T> {
   success: boolean
   data: T
@@ -86,15 +103,16 @@ export interface ApiResponse<T> {
   timestamp?: string
 }
 
-/** 사용자 정보 */
 export interface UserInfo {
   id: string
   email: string
   name?: string
-  role: 'USER' | 'ADMIN'
+  role: Role
+  organizationId?: string | null
+  organizationName?: string | null
+  inviteCode?: string | null
 }
 
-/** 토큰 응답 */
 export interface TokenResponse {
   accessToken: string
   tokenType: string
@@ -102,23 +120,19 @@ export interface TokenResponse {
   user: UserInfo
 }
 
-/** 호실 순서 변경 요청 */
 export interface UnitReorderItem {
   id: string
   sortOrder: number
 }
 
-/** 바텀시트 스냅 포인트 */
 export type SnapPoint = 'hidden' | 'half' | 'full'
 
-/** Kakao 지도 window 타입 확장 */
 declare global {
   interface Window {
     kakao: KakaoMaps
   }
 }
 
-/** Kakao Maps API 타입 (간략화) */
 export interface KakaoMaps {
   maps: {
     load: (callback: () => void) => void
@@ -136,7 +150,7 @@ export interface KakaoMaps {
     services: {
       Geocoder: new () => KakaoGeocoder
       Places: new () => KakaoPlaces
-      Status: { OK: string }
+      Status: { OK: string; ZERO_RESULT: string; ERROR: string }
     }
   }
 }
@@ -174,8 +188,8 @@ export interface KakaoAddressResult {
 export interface KakaoAddressSearchResult {
   address_name: string
   road_address_name?: string
-  x: string  // 경도(lng)
-  y: string  // 위도(lat)
+  x: string
+  y: string
 }
 
 export interface KakaoMapOptions {
@@ -226,14 +240,13 @@ export interface KakaoBounds {
   getNorthEast: () => KakaoLatLng
 }
 
-/** 카카오 로컬 API 장소 검색 결과 */
 export interface KakaoPlaceResult {
   id: string
   place_name: string
   address_name: string
   road_address_name: string
-  x: string  // 경도(lng)
-  y: string  // 위도(lat)
+  x: string
+  y: string
   category_name: string
 }
 

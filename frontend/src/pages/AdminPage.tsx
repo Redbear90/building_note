@@ -1,13 +1,18 @@
 import React, { lazy, Suspense, useState } from 'react'
-import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuth } from '@/hooks/useAuth'
 import {
-  Building2, LogOut, Map, FileText, Download, RefreshCw, Home, LayoutDashboard,
+  Building2, LogOut, Map, FileText, Download, Home, LayoutDashboard, Users, KeyRound, Copy, RefreshCw,
 } from 'lucide-react'
 import { useBuildings } from '@/queries/useBuildingQueries'
 import { useZones } from '@/queries/useZoneQueries'
 import { useTotalUnitCount, useUnitStats } from '@/queries/useUnitQueries'
+import {
+  useMembers,
+  useMyOrganization,
+  useRotateInviteCode,
+  useRemoveMember,
+} from '@/queries/useOrganizationQueries'
 import axiosInstance from '@/api/axiosInstance'
 import { Skeleton } from '@/components/common/Skeleton'
 import { cn } from '@/lib/utils'
@@ -17,27 +22,26 @@ const ZoneEditor = lazy(() => import('@/components/admin/ZoneEditor'))
 const BuildingManager = lazy(() => import('@/components/admin/BuildingManager'))
 const FormBuilder = lazy(() => import('@/components/admin/FormBuilder'))
 
-type Tab = 'dashboard' | 'zones' | 'buildings' | 'formBuilder' | 'export'
+type Tab = 'dashboard' | 'zones' | 'buildings' | 'formBuilder' | 'members' | 'export'
 
 const AdminPage: React.FC = () => {
-  const { isAdmin, user } = useAuthStore()
+  const user = useAuthStore((s) => s.user)
   const { logout } = useAuth()
   const { data: buildings = [] } = useBuildings()
   const { data: zones = [] } = useZones()
   const { data: totalUnitCount = '-' } = useTotalUnitCount()
   const { data: unitStats } = useUnitStats()
 
+  const isOwner = user?.role === 'BUILDING_OWNER'
+
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [editingBuilding, setEditingBuilding] = useState<Building | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [isMigrating, setIsMigrating] = useState(false)
 
   const handleExcelDownload = async () => {
     setIsDownloading(true)
     try {
-      const response = await axiosInstance.get('/export/buildings/excel', {
-        responseType: 'blob',
-      })
+      const response = await axiosInstance.get('/export/buildings/excel', { responseType: 'blob' })
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
@@ -54,40 +58,28 @@ const AdminPage: React.FC = () => {
     }
   }
 
-  const handleMigrateBasementNames = async () => {
-    if (!confirm('호실 이름에서 -101호 → B101호 형식으로 일괄 변환합니다. 계속하시겠습니까?')) return
-    setIsMigrating(true)
-    try {
-      const response = await axiosInstance.post('/admin/migrate/unit-names/basement')
-      alert(response.data?.message ?? '변환 완료')
-    } catch {
-      alert('마이그레이션에 실패했습니다.')
-    } finally {
-      setIsMigrating(false)
-    }
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/admin/login" replace />
-  }
-
-  const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
+  const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }>; ownerOnly?: boolean }[] = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
-    { id: 'zones', label: '구역 관리', icon: Map },
-    { id: 'buildings', label: '건물 관리', icon: Building2 },
-    { id: 'formBuilder', label: '폼 빌더', icon: FileText },
-    { id: 'export', label: '데이터 내보내기', icon: Download },
+    { id: 'zones', label: '구역 관리', icon: Map, ownerOnly: true },
+    { id: 'buildings', label: '건물 관리', icon: Building2, ownerOnly: true },
+    { id: 'formBuilder', label: '폼 빌더', icon: FileText, ownerOnly: true },
+    { id: 'members', label: '멤버 관리', icon: Users, ownerOnly: true },
+    { id: 'export', label: '데이터 내보내기', icon: Download, ownerOnly: true },
   ]
+  const visibleTabs = TABS.filter((t) => !t.ownerOnly || isOwner)
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* 헤더 */}
       <header className="bg-white border-b px-6 py-3 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Building2 className="w-5 h-5 text-primary-500" />
-            <span className="text-base font-bold text-gray-900">BuildingNote 관리자</span>
-            <span className="text-xs text-gray-400">{user?.email}</span>
+            <span className="text-base font-bold text-gray-900">
+              BuildingNote {user?.role === 'ADMIN' ? '운영자' : '관리자'}
+            </span>
+            <span className="text-xs text-gray-400">
+              {user?.organizationName ? `${user.organizationName} · ` : ''}{user?.email}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <a
@@ -109,10 +101,9 @@ const AdminPage: React.FC = () => {
       </header>
 
       <div className="flex flex-1 max-w-7xl mx-auto w-full">
-        {/* 사이드바 탭 */}
         <aside className="w-48 flex-shrink-0 border-r bg-white py-4">
           <nav className="space-y-0.5 px-2">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {visibleTabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => {
@@ -133,7 +124,6 @@ const AdminPage: React.FC = () => {
           </nav>
         </aside>
 
-        {/* 콘텐츠 영역 */}
         <main className="flex-1 overflow-y-auto p-6">
           <Suspense fallback={
             <div className="space-y-3">
@@ -143,17 +133,14 @@ const AdminPage: React.FC = () => {
             </div>
           }>
 
-            {/* 대시보드 */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 <h2 className="text-lg font-bold text-gray-900">대시보드</h2>
-
-                {/* 요약 카드 - 상단 행 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { label: '등록된 구역', value: zones.length, icon: Map, color: 'bg-blue-50 text-blue-600' },
                     { label: '등록된 건물', value: buildings.length, icon: Building2, color: 'bg-green-50 text-green-600' },
-                    { label: '전체 가구', value: totalUnitCount, icon: FileText, color: 'bg-purple-50 text-purple-600' },
+                    { label: '전체 호실', value: totalUnitCount, icon: FileText, color: 'bg-purple-50 text-purple-600' },
                   ].map(({ label, value, icon: Icon, color }) => (
                     <div key={label} className="bg-white rounded-lg border p-5">
                       <div className="flex items-center justify-between">
@@ -169,7 +156,6 @@ const AdminPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* 참여 현황 카드 */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {(() => {
                     const total = unitStats?.total ?? 0
@@ -177,9 +163,9 @@ const AdminPage: React.FC = () => {
                     const inactive = unitStats?.inactive ?? 0
                     const rate = total > 0 ? ((active / total) * 100).toFixed(2) : '0.00'
                     return [
-                      { label: '동의 가구', value: active, sub: '슬라이드 ON', color: 'border-l-4 border-l-green-500', textColor: 'text-green-600' },
-                      { label: '미참여 가구', value: inactive, sub: '슬라이드 OFF', color: 'border-l-4 border-l-gray-300', textColor: 'text-gray-500' },
-                      { label: '전체 가구', value: total, sub: '전체 등록 가구', color: 'border-l-4 border-l-purple-400', textColor: 'text-purple-600' },
+                      { label: '동의 호실', value: active, sub: '슬라이드 ON', color: 'border-l-4 border-l-green-500', textColor: 'text-green-600' },
+                      { label: '미참여 호실', value: inactive, sub: '슬라이드 OFF', color: 'border-l-4 border-l-gray-300', textColor: 'text-gray-500' },
+                      { label: '전체 호실', value: total, sub: '워크스페이스 합계', color: 'border-l-4 border-l-purple-400', textColor: 'text-purple-600' },
                       { label: '참여율', value: `${rate}%`, sub: '동의/전체', color: 'border-l-4 border-l-primary-500', textColor: 'text-primary-600' },
                     ]
                   })().map(({ label, value, sub, color, textColor }) => (
@@ -191,45 +177,26 @@ const AdminPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* 빠른 이동 */}
-                <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">빠른 이동</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {TABS.filter(t => t.id !== 'dashboard').map(({ id, label, icon: Icon }) => (
-                      <button
-                        key={id}
-                        onClick={() => setActiveTab(id)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors"
-                      >
-                        <Icon className="w-5 h-5 text-primary-500" />
-                        <span className="text-xs font-medium text-gray-700">{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {isOwner && <InviteCodeCard />}
               </div>
             )}
 
-            {/* 구역 관리 */}
-            {activeTab === 'zones' && (
+            {activeTab === 'zones' && isOwner && (
               <div className="max-w-xl space-y-4">
                 <h2 className="text-lg font-bold text-gray-900">구역 관리</h2>
                 <div className="bg-white rounded-lg border p-5">
-                  <p className="text-xs text-gray-400 mb-4">구역 그리기는 지도 화면에서만 가능합니다. 여기서는 구역 목록 확인 및 삭제만 가능합니다.</p>
-                  <ZoneEditor
-                    onStartDrawing={() => {}}
-                    onStopDrawing={() => []}
-                  />
+                  <p className="text-xs text-gray-400 mb-4">
+                    구역 그리기는 지도 화면에서만 가능합니다. 여기서는 구역 목록 확인 및 삭제만 가능합니다.
+                  </p>
+                  <ZoneEditor onStartDrawing={() => {}} onStopDrawing={() => []} />
                 </div>
               </div>
             )}
 
-            {/* 건물 관리 */}
-            {activeTab === 'buildings' && !editingBuilding && (
+            {activeTab === 'buildings' && isOwner && !editingBuilding && (
               <div className="max-w-2xl space-y-4">
                 <h2 className="text-lg font-bold text-gray-900">건물 관리</h2>
                 <div className="bg-white rounded-lg border p-5">
-                  <p className="text-xs text-gray-400 mb-4">지도에서 위치를 선택하려면 지도 화면의 관리자 패널을 이용하세요. 여기서는 주소 검색으로 건물을 추가할 수 있습니다.</p>
                   <BuildingManager
                     onEditFormSchema={(building) => {
                       setEditingBuilding(building)
@@ -240,8 +207,7 @@ const AdminPage: React.FC = () => {
               </div>
             )}
 
-            {/* 폼 빌더 */}
-            {activeTab === 'formBuilder' && (
+            {activeTab === 'formBuilder' && isOwner && (
               <div className="max-w-2xl space-y-4">
                 <h2 className="text-lg font-bold text-gray-900">폼 빌더</h2>
                 {editingBuilding ? (
@@ -270,14 +236,16 @@ const AdminPage: React.FC = () => {
               </div>
             )}
 
-            {/* 데이터 내보내기 */}
-            {activeTab === 'export' && (
+            {activeTab === 'members' && isOwner && <MembersPanel />}
+
+            {activeTab === 'export' && isOwner && (
               <div className="max-w-xl space-y-4">
                 <h2 className="text-lg font-bold text-gray-900">데이터 내보내기</h2>
-
                 <div className="bg-white rounded-lg border p-6 space-y-3">
                   <h3 className="text-sm font-semibold text-gray-800">엑셀 다운로드</h3>
-                  <p className="text-xs text-gray-500">구역 → 건물 → 호실 순으로 ON 여부, 폼 입력값을 엑셀로 다운로드합니다.</p>
+                  <p className="text-xs text-gray-500">
+                    구역 → 건물 → 호실 순으로 슬라이드 ON 여부, 폼 입력값을 엑셀로 다운로드합니다.
+                  </p>
                   <button
                     onClick={handleExcelDownload}
                     disabled={isDownloading}
@@ -287,24 +255,112 @@ const AdminPage: React.FC = () => {
                     {isDownloading ? '생성 중...' : '엑셀 다운로드 (.xlsx)'}
                   </button>
                 </div>
-
-                <div className="bg-white rounded-lg border p-6 space-y-3">
-                  <h3 className="text-sm font-semibold text-gray-800">데이터 마이그레이션</h3>
-                  <p className="text-xs text-gray-500">기존 데이터의 형식을 일괄 변환합니다. 한 번만 실행하면 됩니다.</p>
-                  <button
-                    onClick={handleMigrateBasementNames}
-                    disabled={isMigrating}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 disabled:opacity-60 transition-colors"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isMigrating ? 'animate-spin' : ''}`} />
-                    {isMigrating ? '변환 중...' : '호실 이름 변환 (-101호 → B101호)'}
-                  </button>
-                </div>
               </div>
             )}
 
           </Suspense>
         </main>
+      </div>
+    </div>
+  )
+}
+
+const InviteCodeCard: React.FC = () => {
+  const { data: org } = useMyOrganization()
+  const rotate = useRotateInviteCode()
+  if (!org) return null
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(org.inviteCode)
+      alert('초대 코드가 복사되었습니다.')
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg border p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <KeyRound className="w-4 h-4 text-primary-500" />
+        <h3 className="text-sm font-semibold text-gray-800">멤버 초대 코드</h3>
+      </div>
+      <p className="text-xs text-gray-500 mb-3">
+        멤버가 회원가입 시 입력하는 코드입니다. 유출되었다면 재발급하세요.
+      </p>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 px-3 py-2 text-sm font-mono tracking-widest bg-gray-50 border rounded">
+          {org.inviteCode}
+        </code>
+        <button
+          onClick={copyCode}
+          className="p-2 border rounded text-gray-500 hover:bg-gray-50"
+          aria-label="복사"
+        >
+          <Copy className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => {
+            if (confirm('초대 코드를 재발급하시겠습니까? 기존 코드는 즉시 무효화됩니다.')) {
+              rotate.mutate()
+            }
+          }}
+          disabled={rotate.isPending}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${rotate.isPending ? 'animate-spin' : ''}`} />
+          재발급
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const MembersPanel: React.FC = () => {
+  const { data: members = [], isLoading } = useMembers()
+  const remove = useRemoveMember()
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <h2 className="text-lg font-bold text-gray-900">멤버 관리</h2>
+      <InviteCodeCard />
+      <div className="bg-white rounded-lg border">
+        <div className="px-5 py-3 border-b">
+          <h3 className="text-sm font-semibold text-gray-800">멤버 목록 ({members.length})</h3>
+        </div>
+        {isLoading ? (
+          <div className="p-5"><Skeleton className="h-10 w-full" /></div>
+        ) : (
+          <ul className="divide-y">
+            {members.map((m) => (
+              <li key={m.id} className="px-5 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{m.name ?? m.email}</p>
+                  <p className="text-xs text-gray-500">{m.email}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    'text-[10px] font-bold px-2 py-0.5 rounded-full',
+                    m.role === 'BUILDING_OWNER' ? 'bg-primary-50 text-primary-600' : 'bg-gray-100 text-gray-600'
+                  )}>
+                    {m.role === 'BUILDING_OWNER' ? '소유자' : '멤버'}
+                  </span>
+                  {m.role === 'MEMBER' && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`'${m.email}' 멤버를 제거하시겠습니까?`)) remove.mutate(m.id)
+                      }}
+                      disabled={remove.isPending}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      제거
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )

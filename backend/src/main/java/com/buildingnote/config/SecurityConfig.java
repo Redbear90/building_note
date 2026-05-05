@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -21,14 +20,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import java.util.Map;
 
 /**
- * Spring Security 설정
- * - JWT 기반 Stateless 인증
- * - CORS는 CorsConfig에서 분리 처리
- * - 엔드포인트별 접근 권한 설정
+ * Spring Security: JWT 기반 stateless 인증.
+ * <ul>
+ *   <li>공개: 회원가입, 로그인, 토큰 갱신, Swagger</li>
+ *   <li>그 외 모든 API는 인증 필요. 역할 권한은 컨트롤러에서 @PreAuthorize로 검사.</li>
+ * </ul>
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity  // @PreAuthorize 어노테이션 활성화
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -36,68 +36,47 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF 비활성화 (JWT 사용으로 불필요)
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // 세션 사용 안 함 (Stateless)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // 요청별 권한 설정
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // =====================================================
-                        // [임시 공개 모드] 모든 요청 허용 — 복구 시 이 줄 제거
-                        .anyRequest().permitAll()
-                        // =====================================================
-                        // [원래 설정 — 복구 시 위 .anyRequest().permitAll() 제거 후 아래 주석 해제]
-//                        // Swagger UI 허용
-//                        .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
-//                        // 인증 API 허용
-//                        .requestMatchers("/api/v1/auth/**").permitAll()
-//                        // GET 요청 공개 (건물, 구역, 호실, 폼 스키마 조회)
-//                        .requestMatchers(HttpMethod.GET, "/api/v1/zones/**").permitAll()
-//                        .requestMatchers(HttpMethod.GET, "/api/v1/buildings/**").permitAll()
-//                        .requestMatchers(HttpMethod.GET, "/api/v1/units/**").permitAll()
-//                        // 기록 조회는 공개, 저장은 인증 필요
-//                        .requestMatchers(HttpMethod.GET, "/api/v1/units/*/record").permitAll()
-//                        .requestMatchers(HttpMethod.PUT, "/api/v1/units/*/record").authenticated()
-//                        // 댓글 조회는 공개, 작성/삭제는 인증 필요
-//                        .requestMatchers(HttpMethod.GET, "/api/v1/units/*/comments").permitAll()
-//                        .requestMatchers(HttpMethod.POST, "/api/v1/units/*/comments").authenticated()
-//                        .requestMatchers(HttpMethod.DELETE, "/api/v1/units/*/comments/*").authenticated()
-//                        // 나머지는 인증 필요
-//                        .anyRequest().authenticated()
+                        // 공개 — 인증/문서/헬스체크
+                        .requestMatchers(
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout",
+                                "/api/v1/auth/signup/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/api-docs/**",
+                                "/actuator/health"
+                        ).permitAll()
+                        // 그 외 모두 인증 필요. 세부 권한은 @PreAuthorize.
+                        .anyRequest().authenticated()
                 )
-
-                // 인증/인가 실패 처리 (JSON 형식 반환)
-                .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
-                            ObjectMapper mapper = new ObjectMapper();
-                            response.getWriter().write(mapper.writeValueAsString(
-                                    Map.of("success", false, "message", "로그인이 필요합니다.", "code", "UNAUTHORIZED")
-                            ));
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
-                            ObjectMapper mapper = new ObjectMapper();
-                            response.getWriter().write(mapper.writeValueAsString(
-                                    Map.of("success", false, "message", "접근 권한이 없습니다.", "code", "ACCESS_DENIED")
-                            ));
-                        })
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) -> writeJson(
+                                res, HttpServletResponse.SC_UNAUTHORIZED,
+                                "로그인이 필요합니다.", "UNAUTHORIZED"))
+                        .accessDeniedHandler((req, res, e) -> writeJson(
+                                res, HttpServletResponse.SC_FORBIDDEN,
+                                "접근 권한이 없습니다.", "ACCESS_DENIED"))
                 )
-
-                // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private static void writeJson(HttpServletResponse response, int status, String message, String code)
+            throws java.io.IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+        new ObjectMapper().writeValue(response.getWriter(),
+                Map.of("success", false, "message", message, "code", code));
     }
 }

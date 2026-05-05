@@ -37,16 +37,13 @@ export const BuildingBottomSheet: React.FC = () => {
     setSearchQuery('')
   }
 
-  // 수정 완료 후 선택된 건물 데이터 갱신
-  const handleEditClose = useCallback(() => {
-    if (selectedBuilding) {
-      const updatedBuilding = buildings.find((b) => b.id === selectedBuilding.id)
-      if (updatedBuilding) {
-        selectBuilding(updatedBuilding)
-      }
+  // 수정 완료 후 선택된 건물 데이터 갱신 (뮤테이션 응답으로 즉시 반영)
+  const handleEditClose = useCallback((updated?: Building) => {
+    if (updated) {
+      selectBuilding(updated)
     }
     setEditingBuilding(null)
-  }, [selectedBuilding, buildings, selectBuilding])
+  }, [selectBuilding])
 
   return (
     <>

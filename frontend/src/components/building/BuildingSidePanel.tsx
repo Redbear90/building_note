@@ -7,6 +7,7 @@ import { useMapStore } from '@/stores/mapStore'
 import { useBuildings } from '@/queries/useBuildingQueries'
 import { BuildingListSkeleton } from '@/components/common/Skeleton'
 import { EmptyState } from '@/components/common/EmptyState'
+import type { Building } from '@/types'
 
 /**
  * 데스크톱 사이드 패널
@@ -28,16 +29,13 @@ export const BuildingSidePanel: React.FC = () => {
     debouncedSearch || undefined
   )
 
-  // 수정 완료 후 선택된 건물 데이터 갱신
-  const handleEditClose = useCallback(() => {
-    if (selectedBuilding) {
-      const updatedBuilding = buildings.find((b) => b.id === selectedBuilding.id)
-      if (updatedBuilding) {
-        selectBuilding(updatedBuilding)
-      }
+  // 수정 완료 후 선택된 건물 데이터 갱신 (뮤테이션 응답으로 즉시 반영)
+  const handleEditClose = useCallback((updated?: Building) => {
+    if (updated) {
+      selectBuilding(updated)
     }
     setShowEditModal(false)
-  }, [selectedBuilding, buildings, selectBuilding])
+  }, [selectBuilding])
 
   return (
     <div className="w-80 h-full bg-white border-r flex flex-col overflow-hidden">

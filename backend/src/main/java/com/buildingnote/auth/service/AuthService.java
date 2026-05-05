@@ -1,11 +1,17 @@
 package com.buildingnote.auth.service;
 
 import com.buildingnote.auth.dto.LoginRequest;
+import com.buildingnote.auth.dto.SignupMemberRequest;
+import com.buildingnote.auth.dto.SignupOwnerRequest;
 import com.buildingnote.auth.dto.TokenResponse;
 import com.buildingnote.auth.jwt.JwtTokenProvider;
 import com.buildingnote.common.exception.BusinessException;
 import com.buildingnote.common.exception.ErrorCode;
 import com.buildingnote.config.JwtConfig;
+import com.buildingnote.organization.entity.Organization;
+import com.buildingnote.organization.repository.OrganizationRepository;
+import com.buildingnote.organization.service.InviteCodeGenerator;
+import com.buildingnote.user.entity.Role;
 import com.buildingnote.user.entity.User;
 import com.buildingnote.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -21,8 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 
 /**
- * 인증 서비스
- * 로그인, 토큰 갱신, 로그아웃 처리
+ * 인증 서비스. 로그인/회원가입(OWNER, MEMBER)/토큰 갱신/로그아웃.
  */
 @Slf4j
 @Service
@@ -30,113 +35,94 @@ import java.util.Arrays;
 @Transactional(readOnly = true)
 public class AuthService {
 
-    private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+    private static final String REFRESH_COOKIE = "refreshToken";
 
     private final UserRepository userRepository;
+    private final OrganizationRepository organizationRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final JwtConfig jwtConfig;
+    private final InviteCodeGenerator inviteCodeGenerator;
     private final Environment environment;
 
-    /**
-     * 로그인
-     * - 이메일/비밀번호 검증
-     * - 액세스 토큰 반환 (응답 바디)
-     * - 리프레시 토큰 설정 (httpOnly 쿠키)
-     */
+    // ===== 로그인 / 갱신 / 로그아웃 =====
+
     public TokenResponse login(LoginRequest request, HttpServletResponse response) {
-        // 이메일로 사용자 조회
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
-
-        // 비밀번호 검증
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
-
-        // 토큰 생성
-        String accessToken = jwtTokenProvider.generateAccessToken(user);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
-
-        // 리프레시 토큰을 httpOnly 쿠키에 설정
-        setRefreshTokenCookie(response, refreshToken);
-
-        log.info("로그인 성공 - 사용자: {}", user.getEmail());
-        return buildTokenResponse(user, accessToken);
+        return issueTokens(user, response);
     }
 
-    /**
-     * 토큰 갱신
-     * - 쿠키에서 리프레시 토큰 추출
-     * - 새 액세스 토큰 발급
-     */
     public TokenResponse refresh(HttpServletRequest request, HttpServletResponse response) {
-        // 쿠키에서 리프레시 토큰 추출
-        String refreshToken = extractRefreshTokenFromCookie(request);
-
+        String refreshToken = extractRefreshToken(request);
         if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
-
-        // 토큰에서 사용자 ID 추출 후 DB 조회
         var userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        // 새 액세스 토큰 발급
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user);
-
-        // 리프레시 토큰도 갱신 (선택적: 보안 강화)
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user);
-        setRefreshTokenCookie(response, newRefreshToken);
-
-        log.info("토큰 갱신 성공 - 사용자: {}", user.getEmail());
-        return buildTokenResponse(user, newAccessToken);
+        return issueTokens(user, response);
     }
 
-    /**
-     * 로그아웃
-     * - 리프레시 토큰 쿠키 삭제
-     */
     public void logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, null);
-        cookie.setMaxAge(0);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        response.addCookie(cookie);
-        log.info("로그아웃 처리 완료");
+        clearRefreshTokenCookie(response);
     }
 
-    /**
-     * httpOnly 쿠키에 리프레시 토큰 설정
-     * local 프로파일에서는 Secure=false (HTTP 허용), 그 외 운영 환경에서는 Secure=true (HTTPS 필수)
-     */
-    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        boolean isLocal = Arrays.asList(environment.getActiveProfiles()).contains("local");
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(!isLocal);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) (jwtConfig.getRefreshTokenExpiration() / 1000));
-        response.addCookie(cookie);
+    // ===== 회원가입 =====
+
+    @Transactional
+    public TokenResponse signupOwner(SignupOwnerRequest req, HttpServletResponse response) {
+        if (userRepository.existsByEmail(req.email())) {
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+        Organization org = organizationRepository.save(Organization.builder()
+                .name(req.workspaceName())
+                .inviteCode(inviteCodeGenerator.generateUnique())
+                .build());
+
+        User owner = userRepository.save(User.builder()
+                .email(req.email())
+                .password(passwordEncoder.encode(req.password()))
+                .name(req.name())
+                .role(Role.BUILDING_OWNER)
+                .organization(org)
+                .build());
+        log.info("워크스페이스 생성: {} / owner={}", org.getName(), owner.getEmail());
+        return issueTokens(owner, response);
     }
 
-    /**
-     * HTTP 요청 쿠키에서 리프레시 토큰 추출
-     */
-    private String extractRefreshTokenFromCookie(HttpServletRequest request) {
-        if (request.getCookies() == null) return null;
-        return Arrays.stream(request.getCookies())
-                .filter(cookie -> REFRESH_TOKEN_COOKIE_NAME.equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+    @Transactional
+    public TokenResponse signupMember(SignupMemberRequest req, HttpServletResponse response) {
+        if (userRepository.existsByEmail(req.email())) {
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+        Organization org = organizationRepository.findByInviteCode(req.inviteCode().toUpperCase())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INVITE_CODE));
+
+        User member = userRepository.save(User.builder()
+                .email(req.email())
+                .password(passwordEncoder.encode(req.password()))
+                .name(req.name())
+                .role(Role.MEMBER)
+                .organization(org)
+                .build());
+        log.info("멤버 가입: {} → {}", member.getEmail(), org.getName());
+        return issueTokens(member, response);
     }
 
-    /**
-     * 토큰 응답 DTO 생성
-     */
-    private TokenResponse buildTokenResponse(User user, String accessToken) {
+    // ===== 헬퍼 =====
+
+    private TokenResponse issueTokens(User user, HttpServletResponse response) {
+        String accessToken = jwtTokenProvider.generateAccessToken(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
+        setRefreshTokenCookie(response, refreshToken);
+
+        Organization org = user.getOrganization();
+        String inviteCode = (user.getRole() == Role.BUILDING_OWNER && org != null) ? org.getInviteCode() : null;
+
         return new TokenResponse(
                 accessToken,
                 "Bearer",
@@ -145,8 +131,42 @@ public class AuthService {
                         user.getId().toString(),
                         user.getEmail(),
                         user.getName(),
-                        user.getRole().name()
+                        user.getRole().name(),
+                        org != null ? org.getId().toString() : null,
+                        org != null ? org.getName() : null,
+                        inviteCode
                 )
         );
+    }
+
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        boolean isLocal = Arrays.asList(environment.getActiveProfiles()).contains("local");
+        Cookie cookie = new Cookie(REFRESH_COOKIE, refreshToken);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(!isLocal);
+        cookie.setPath("/");
+        cookie.setMaxAge((int) (jwtConfig.getRefreshTokenExpiration() / 1000));
+        cookie.setAttribute("SameSite", isLocal ? "Lax" : "Strict");
+        response.addCookie(cookie);
+    }
+
+    private void clearRefreshTokenCookie(HttpServletResponse response) {
+        boolean isLocal = Arrays.asList(environment.getActiveProfiles()).contains("local");
+        Cookie cookie = new Cookie(REFRESH_COOKIE, "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(!isLocal);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        cookie.setAttribute("SameSite", isLocal ? "Lax" : "Strict");
+        response.addCookie(cookie);
+    }
+
+    private String extractRefreshToken(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+        return Arrays.stream(request.getCookies())
+                .filter(c -> REFRESH_COOKIE.equals(c.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
 }

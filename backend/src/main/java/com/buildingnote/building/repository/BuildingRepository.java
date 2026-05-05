@@ -9,36 +9,49 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 건물 JPA 리포지터리
+ * 건물 리포지터리. 모든 조회는 organization 단위로 격리된다.
  */
 public interface BuildingRepository extends JpaRepository<Building, UUID> {
 
-    /**
-     * 구역 ID로 건물 목록 조회
-     */
-    List<Building> findByZoneId(UUID zoneId);
+    @Query("""
+        SELECT b FROM Building b
+        LEFT JOIN FETCH b.zone
+        WHERE b.organization.id = :orgId
+        ORDER BY b.createdAt DESC
+        """)
+    List<Building> findAllInOrg(@Param("orgId") UUID orgId);
 
-    /**
-     * 전체 건물 목록 (구역 정보 Fetch Join으로 N+1 방지)
-     */
-    @Query("SELECT b FROM Building b LEFT JOIN FETCH b.zone ORDER BY b.createdAt DESC")
-    List<Building> findAllWithZone();
+    @Query("""
+        SELECT b FROM Building b
+        LEFT JOIN FETCH b.zone
+        WHERE b.organization.id = :orgId AND b.zone.id = :zoneId
+        ORDER BY b.createdAt DESC
+        """)
+    List<Building> findByZoneIdInOrg(@Param("orgId") UUID orgId, @Param("zoneId") UUID zoneId);
 
-    /**
-     * 구역 ID로 건물 목록 조회 (구역 정보 Fetch Join)
-     */
-    @Query("SELECT b FROM Building b LEFT JOIN FETCH b.zone WHERE b.zone.id = :zoneId ORDER BY b.createdAt DESC")
-    List<Building> findByZoneIdWithZone(@Param("zoneId") UUID zoneId);
+    @Query("""
+        SELECT b FROM Building b
+        LEFT JOIN FETCH b.zone
+        WHERE b.organization.id = :orgId
+          AND (LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%'))
+            OR LOWER(b.address) LIKE LOWER(CONCAT('%', :search, '%')))
+        ORDER BY b.createdAt DESC
+        """)
+    List<Building> findByKeywordInOrg(@Param("orgId") UUID orgId, @Param("search") String search);
 
-    /**
-     * 건물명 또는 주소 검색 (구역 필터 + 키워드)
-     */
-    @Query("SELECT b FROM Building b LEFT JOIN FETCH b.zone WHERE b.zone.id = :zoneId AND (LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(b.address) LIKE LOWER(CONCAT('%', :search, '%'))) ORDER BY b.createdAt DESC")
-    List<Building> findByZoneIdAndKeyword(@Param("zoneId") UUID zoneId, @Param("search") String search);
+    @Query("""
+        SELECT b FROM Building b
+        LEFT JOIN FETCH b.zone
+        WHERE b.organization.id = :orgId AND b.zone.id = :zoneId
+          AND (LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%'))
+            OR LOWER(b.address) LIKE LOWER(CONCAT('%', :search, '%')))
+        ORDER BY b.createdAt DESC
+        """)
+    List<Building> findByZoneIdAndKeywordInOrg(
+            @Param("orgId") UUID orgId,
+            @Param("zoneId") UUID zoneId,
+            @Param("search") String search);
 
-    /**
-     * 건물명 또는 주소 검색 (전체 구역)
-     */
-    @Query("SELECT b FROM Building b LEFT JOIN FETCH b.zone WHERE LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(b.address) LIKE LOWER(CONCAT('%', :search, '%')) ORDER BY b.createdAt DESC")
-    List<Building> findByKeyword(@Param("search") String search);
+    @Query("SELECT COUNT(b) FROM Building b WHERE b.organization.id = :orgId")
+    long countByOrganizationId(@Param("orgId") UUID orgId);
 }

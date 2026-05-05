@@ -9,22 +9,30 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * 호실 기록 JPA 리포지터리
- */
 public interface UnitRecordRepository extends JpaRepository<UnitRecord, UUID> {
 
-    Optional<UnitRecord> findByUnitId(UUID unitId);
+    /** 활성(미삭제) 기록 — (unit, author) 1건. */
+    @Query("""
+        SELECT r FROM UnitRecord r
+        WHERE r.unit.id = :unitId AND r.author.id = :authorId AND r.deletedAt IS NULL
+        """)
+    Optional<UnitRecord> findActiveByUnitAndAuthor(
+            @Param("unitId") UUID unitId, @Param("authorId") UUID authorId);
 
-    /**
-     * 여러 호실 ID로 기록 일괄 조회 (엑셀 내보내기 N+1 방지)
-     */
-    @Query("SELECT r FROM UnitRecord r WHERE r.unit.id IN :unitIds")
-    List<UnitRecord> findByUnitIdIn(@Param("unitIds") List<UUID> unitIds);
+    /** 호실 한 칸의 활성 기록 전체 (BUILDING_OWNER가 모든 멤버 기록을 볼 때) */
+    @Query("""
+        SELECT r FROM UnitRecord r
+        JOIN FETCH r.author
+        WHERE r.unit.id = :unitId AND r.deletedAt IS NULL
+        ORDER BY r.updatedAt DESC
+        """)
+    List<UnitRecord> findActiveByUnitId(@Param("unitId") UUID unitId);
 
-    /**
-     * __active = 'true' 인 레코드 수 (동의 가구)
-     */
-    @Query(value = "SELECT COUNT(*) FROM unit_records WHERE data->>'__active' = 'true'", nativeQuery = true)
-    long countActiveUnits();
+    /** 엑셀 내보내기 — 활성 기록만 일괄 */
+    @Query("""
+        SELECT r FROM UnitRecord r
+        JOIN FETCH r.author
+        WHERE r.unit.id IN :unitIds AND r.deletedAt IS NULL
+        """)
+    List<UnitRecord> findActiveByUnitIdIn(@Param("unitIds") List<UUID> unitIds);
 }

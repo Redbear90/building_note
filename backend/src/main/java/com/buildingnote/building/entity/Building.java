@@ -1,6 +1,7 @@
 package com.buildingnote.building.entity;
 
 import com.buildingnote.common.auditing.BaseEntity;
+import com.buildingnote.organization.entity.Organization;
 import com.buildingnote.user.entity.User;
 import com.buildingnote.zone.entity.Zone;
 import jakarta.persistence.*;
@@ -10,8 +11,9 @@ import org.hibernate.annotations.UuidGenerator;
 import java.util.UUID;
 
 /**
- * 건물 엔티티
- * 지도에 마커로 표시되는 건물 정보
+ * 건물.
+ * organization 단위로 격리되며 (organization_id NOT NULL),
+ * 작성자는 BUILDING_OWNER 본인.
  */
 @Entity
 @Table(name = "buildings")
@@ -32,11 +34,9 @@ public class Building extends BaseEntity {
     @Column(length = 500)
     private String address;
 
-    /** 위도 (latitude) */
     @Column(nullable = false)
     private Double lat;
 
-    /** 경도 (longitude) */
     @Column(nullable = false)
     private Double lng;
 
@@ -44,18 +44,23 @@ public class Building extends BaseEntity {
     @JoinColumn(name = "zone_id")
     private Zone zone;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = true) // [임시 공개] 복구 시 nullable = false
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "organization_id", nullable = false)
+    private Organization organization;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
-    /**
-     * 건물 정보 수정
-     */
     public void update(String name, String address, Double lat, Double lng, Zone zone) {
         this.name = name;
         this.address = address;
         this.lat = lat;
         this.lng = lng;
         this.zone = zone;
+    }
+
+    public UUID getOrganizationId() {
+        return organization.getId();
     }
 }
